@@ -1,0 +1,507 @@
+[
+    {
+        "word": "I",
+        "start": 0.44,
+        "end": 0.528
+    },
+    {
+        "word": "just",
+        "start": 0.528,
+        "end": 0.68
+    },
+    {
+        "word": "got",
+        "start": 0.68,
+        "end": 0.8
+    },
+    {
+        "word": "my",
+        "start": 0.8,
+        "end": 0.928
+    },
+    {
+        "word": "teardrop",
+        "start": 0.95,
+        "end": 1.334
+    },
+    {
+        "word": "earrings",
+        "start": 1.374,
+        "end": 1.87
+    },
+    {
+        "word": "and",
+        "start": 1.942,
+        "end": 2.126
+    },
+    {
+        "word": "wow,",
+        "start": 2.15,
+        "end": 2.494
+    },
+    {
+        "word": "they're",
+        "start": 2.574,
+        "end": 2.83
+    },
+    {
+        "word": "absolutely",
+        "start": 2.862,
+        "end": 3.374
+    },
+    {
+        "word": "amazing.",
+        "start": 3.414,
+        "end": 4.166
+    },
+    {
+        "word": "Picture this:",
+        "start": 4.35,
+        "end": 5.158
+    },
+    {
+        "word": "you're",
+        "start": 5.326,
+        "end": 5.622
+    },
+    {
+        "word": "in",
+        "start": 5.638,
+        "end": 5.742
+    },
+    {
+        "word": "a",
+        "start": 5.758,
+        "end": 5.838
+    },
+    {
+        "word": "hurry",
+        "start": 5.846,
+        "end": 6.006
+    },
+    {
+        "word": "in",
+        "start": 6.03,
+        "end": 6.118
+    },
+    {
+        "word": "the",
+        "start": 6.126,
+        "end": 6.222
+    },
+    {
+        "word": "morning",
+        "start": 6.238,
+        "end": 6.462
+    },
+    {
+        "word": "trying",
+        "start": 6.518,
+        "end": 6.71
+    },
+    {
+        "word": "to",
+        "start": 6.742,
+        "end": 6.838
+    },
+    {
+        "word": "get",
+        "start": 6.846,
+        "end": 6.966
+    },
+    {
+        "word": "ready",
+        "start": 6.99,
+        "end": 7.142
+    },
+    {
+        "word": "for",
+        "start": 7.158,
+        "end": 7.31
+    },
+    {
+        "word": "work,",
+        "start": 7.342,
+        "end": 7.606
+    },
+    {
+        "word": "and",
+        "start": 7.67,
+        "end": 7.822
+    },
+    {
+        "word": "you",
+        "start": 7.838,
+        "end": 7.99
+    },
+    {
+        "word": "end",
+        "start": 8.022,
+        "end": 8.166
+    },
+    {
+        "word": "up",
+        "start": 8.19,
+        "end": 8.278
+    },
+    {
+        "word": "just",
+        "start": 8.286,
+        "end": 8.454
+    },
+    {
+        "word": "throwing",
+        "start": 8.494,
+        "end": 8.766
+    },
+    {
+        "word": "on",
+        "start": 8.79,
+        "end": 8.902
+    },
+    {
+        "word": "a",
+        "start": 8.918,
+        "end": 9.022
+    },
+    {
+        "word": "basic",
+        "start": 9.038,
+        "end": 9.31
+    },
+    {
+        "word": "T-shirt",
+        "start": 9.342,
+        "end": 9.662
+    },
+    {
+        "word": "and",
+        "start": 9.678,
+        "end": 9.806
+    },
+    {
+        "word": "jeans.",
+        "start": 9.83,
+        "end": 10.246
+    },
+    {
+        "word": "Just",
+        "start": 10.35,
+        "end": 10.638
+    },
+    {
+        "word": "add",
+        "start": 10.686,
+        "end": 10.87
+    },
+    {
+        "word": "these",
+        "start": 10.902,
+        "end": 11.046
+    },
+    {
+        "word": "stunning",
+        "start": 11.07,
+        "end": 11.374
+    },
+    {
+        "word": "earrings",
+        "start": 11.414,
+        "end": 11.862
+    },
+    {
+        "word": "and",
+        "start": 11.918,
+        "end": 12.062
+    },
+    {
+        "word": "voila.",
+        "start": 12.078,
+        "end": 12.55
+    },
+    {
+        "word": "You",
+        "start": 12.622,
+        "end": 12.806
+    },
+    {
+        "word": "instantly",
+        "start": 12.83,
+        "end": 13.19
+    },
+    {
+        "word": "turn",
+        "start": 13.222,
+        "end": 13.39
+    },
+    {
+        "word": "into",
+        "start": 13.422,
+        "end": 13.566
+    },
+    {
+        "word": "a",
+        "start": 13.59,
+        "end": 13.702
+    },
+    {
+        "word": "fashion",
+        "start": 13.718,
+        "end": 14.014
+    },
+    {
+        "word": "icon.",
+        "start": 14.054,
+        "end": 14.674
+    },
+    {
+        "word": "Crafted",
+        "start": 15.494,
+        "end": 16.094
+    },
+    {
+        "word": "from",
+        "start": 16.134,
+        "end": 16.334
+    },
+    {
+        "word": "hypoallergenic",
+        "start": 16.374,
+        "end": 17.278
+    },
+    {
+        "word": "gold",
+        "start": 17.326,
+        "end": 17.582
+    },
+    {
+        "word": "plated",
+        "start": 17.638,
+        "end": 17.966
+    },
+    {
+        "word": "copper,",
+        "start": 17.99,
+        "end": 18.478
+    },
+    {
+        "word": "these",
+        "start": 18.566,
+        "end": 18.814
+    },
+    {
+        "word": "earrings",
+        "start": 18.854,
+        "end": 19.166
+    },
+    {
+        "word": "are",
+        "start": 19.19,
+        "end": 19.35
+    },
+    {
+        "word": "incredibly",
+        "start": 19.382,
+        "end": 19.79
+    },
+    {
+        "word": "lightweight.",
+        "start": 19.822,
+        "end": 20.398
+    },
+    {
+        "word": "Wearing",
+        "start": 20.486,
+        "end": 20.806
+    },
+    {
+        "word": "them",
+        "start": 20.83,
+        "end": 20.99
+    },
+    {
+        "word": "all",
+        "start": 21.022,
+        "end": 21.238
+    },
+    {
+        "word": "day",
+        "start": 21.286,
+        "end": 21.518
+    },
+    {
+        "word": "is",
+        "start": 21.566,
+        "end": 21.774
+    },
+    {
+        "word": "totally",
+        "start": 21.814,
+        "end": 22.15
+    },
+    {
+        "word": "effortless.",
+        "start": 22.182,
+        "end": 22.758
+    },
+    {
+        "word": "I",
+        "start": 22.846,
+        "end": 23.022
+    },
+    {
+        "word": "won't",
+        "start": 23.038,
+        "end": 23.19
+    },
+    {
+        "word": "even",
+        "start": 23.222,
+        "end": 23.414
+    },
+    {
+        "word": "start",
+        "start": 23.454,
+        "end": 23.654
+    },
+    {
+        "word": "on",
+        "start": 23.694,
+        "end": 23.846
+    },
+    {
+        "word": "how",
+        "start": 23.87,
+        "end": 24.03
+    },
+    {
+        "word": "many",
+        "start": 24.062,
+        "end": 24.206
+    },
+    {
+        "word": "fashion",
+        "start": 24.23,
+        "end": 24.534
+    },
+    {
+        "word": "influencers",
+        "start": 24.574,
+        "end": 25.206
+    },
+    {
+        "word": "have",
+        "start": 25.27,
+        "end": 25.47
+    },
+    {
+        "word": "already",
+        "start": 25.502,
+        "end": 25.718
+    },
+    {
+        "word": "shown",
+        "start": 25.766,
+        "end": 26.006
+    },
+    {
+        "word": "off",
+        "start": 26.03,
+        "end": 26.19
+    },
+    {
+        "word": "these",
+        "start": 26.222,
+        "end": 26.39
+    },
+    {
+        "word": "earrings",
+        "start": 26.422,
+        "end": 26.854
+    },
+    {
+        "word": "on",
+        "start": 26.894,
+        "end": 27.046
+    },
+    {
+        "word": "their",
+        "start": 27.07,
+        "end": 27.254
+    },
+    {
+        "word": "instagram.",
+        "start": 27.294,
+        "end": 27.926
+    },
+    {
+        "word": "Want",
+        "start": 28.03,
+        "end": 28.198
+    },
+    {
+        "word": "to",
+        "start": 28.206,
+        "end": 28.278
+    },
+    {
+        "word": "get",
+        "start": 28.286,
+        "end": 28.382
+    },
+    {
+        "word": "a",
+        "start": 28.398,
+        "end": 28.478
+    },
+    {
+        "word": "pair",
+        "start": 28.486,
+        "end": 28.606
+    },
+    {
+        "word": "for",
+        "start": 28.63,
+        "end": 28.742
+    },
+    {
+        "word": "yourself?",
+        "start": 28.758,
+        "end": 29.318
+    },
+    {
+        "word": "Simply",
+        "start": 29.446,
+        "end": 29.83
+    },
+    {
+        "word": "click",
+        "start": 29.862,
+        "end": 30.046
+    },
+    {
+        "word": "the",
+        "start": 30.07,
+        "end": 30.182
+    },
+    {
+        "word": "button",
+        "start": 30.198,
+        "end": 30.39
+    },
+    {
+        "word": "below",
+        "start": 30.422,
+        "end": 30.614
+    },
+    {
+        "word": "this",
+        "start": 30.654,
+        "end": 30.83
+    },
+    {
+        "word": "video.",
+        "start": 30.862,
+        "end": 30.934
+    }
+]

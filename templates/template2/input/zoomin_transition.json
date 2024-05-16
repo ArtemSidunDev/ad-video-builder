@@ -1,0 +1,7 @@
+[
+    {
+        "name": "SimpleZoom",
+        "duration": 200,
+        "params": { "zoom_quickness": 1 }
+    }
+]

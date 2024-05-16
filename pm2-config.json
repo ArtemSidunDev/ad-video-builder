@@ -1,0 +1,11 @@
+{
+  "apps": [
+    {
+      "name": "zeely-ad-video-builder",
+      "script": "./index.js",
+      "instances": "1",
+      "watch": ["templates", "index.js", "handler.js"],
+      "ignore_watch": ["node_modules", "data"]
+    }
+  ]
+}

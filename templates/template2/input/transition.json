@@ -1,0 +1,29 @@
+[
+    {
+        "name": "SimpleZoom",
+        "duration": 400
+    },
+    {
+        "name": "Directional",
+        "duration": 0
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 600,
+        "params": { "zoom_quickness": 0.4 }
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 600,
+        "params": { "zoom_quickness": 0.4 }
+    },
+    {
+        "name": "rotate_scale_fade",
+        "duration": 400,
+        "params": { "scale": 1.5 }
+    }
+]

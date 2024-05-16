@@ -1,0 +1,34 @@
+[
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    },
+    {
+        "name": "wipeLeft",
+        "duration": 450
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    }
+]

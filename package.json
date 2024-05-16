@@ -1,0 +1,17 @@
+{
+  "name": "ad-video-builder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start pm2-config.json && pm2 logs zeely-ad-video-builder"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "2.1621.0",
+    "axios": "1.6.8",
+    "dotenv": "16.4.5",
+    "express": "4.19.2"
+  }
+}
