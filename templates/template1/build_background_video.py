@@ -361,7 +361,7 @@ def split_top_bottom(t):
 start_time = 0.2
 end_time = 0.8
 front_image = Image.fromarray(video_clip.get_frame(2.49))
-video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).speedx(1.04).subclip(
+video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(
     get_timestamp_with_transtion_span(8)[0],
     get_timestamp_with_transtion_span(8)[1]).resize(
         (video_dest_width,
@@ -431,11 +431,27 @@ cropped_clip = clip.crop(
 write_videoclips(cropped_clip, idx=10)
 clip.close()
 
+
+
+def get_safe_subclip(clip, start_time, end_time):
+    if start_time < 0:
+        start_time = 0
+    if end_time > clip.duration:
+        end_time = clip.duration
+    return clip.subclip(start_time, end_time)
 # ================== 11. Video subclip from avatar =======================
 # Time : 24.5-29s
-clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).speedx(1.04).subclip(
-    get_timestamp_with_transtion_span(11)[0],
-    get_timestamp_with_transtion_span(11)[1])
+clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
+
+start_time, end_time = get_timestamp_with_transtion_span(11)
+
+end_time = clip.duration
+
+clip = clip.subclip(start_time, end_time)
+
+offset_for_avatar = clip.duration
+
+
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -546,10 +562,12 @@ processed_clip = foreground_clip.fl(
 write_videoclips(processed_clip, idx=12)
 foreground_clip.close()
 
+avatar_clip = VideoFileClip(os.path.join(temp_folder, "11.mp4"))
+
 # List of FFmpeg commands
 commands = [
     f'ffmpeg -i 08.mp4 -i 09.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset=2.5,format=yuv420p" 08-09.mp4',
-    f'ffmpeg -i 11.mp4 -i 12.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset=4.5,format=yuv420p" 11-12.mp4',
+    f'ffmpeg -i 11.mp4 -i 12.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset={avatar_clip.duration - 0.4},format=yuv420p" 11-12.mp4',
     f'ffmpeg -i 08-09.mp4 -i 10.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset=4.5,format=yuv420p" 08-09-10.mp4',
 ]
 
@@ -606,8 +624,8 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Error executing command: {e}")
 
-for file_name in os.listdir(temp_folder):
-    file_path = os.path.join(temp_folder, file_name)
+# for file_name in os.listdir(temp_folder):
+#     file_path = os.path.join(temp_folder, file_name)
 
-    if file_name != "background_video.mp4":
-        os.remove(file_path)
+#     if file_name != "background_video.mp4":
+#         os.remove(file_path)

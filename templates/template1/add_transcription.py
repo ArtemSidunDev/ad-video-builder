@@ -8,7 +8,6 @@ Created on Fri Apr 26 00:26:48 2024
 import numpy as np
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
 import json
-# import assemblyai as aai
 from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip, VideoFileClip, ColorClip
 import moviepy.audio.fx.all as afx
 import os
@@ -24,13 +23,13 @@ folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
 FONT = "./templates/template1/input/ProximaNova-Bold.ttf"
-FONT_SIZE = 70
+FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#FE0000"
-FONT_OUTLINE_WIDTH = 3
+FONT_HIGHLIGHT_COLOR = "#CEA636"
+FONT_OUTLINE_WIDTH = 4
 
-foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).speedx(1.04).audio
+foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
@@ -67,14 +66,10 @@ def get_sentences_from_words(word_list):
     # Add the last sentence if it's not empty
     if current_sentence:
         sentences.append((current_sentence.strip(), start_idx, end_idx))
-    
     return sentences
 
 def split_text_into_lines(word_list):
-   
-
     subtitles = []
-    
     
     sentences = get_sentences_from_words(word_list)
     
@@ -216,13 +211,13 @@ def create_caption(
         word_clip = word_clip.set_position((centered_x_pos, start_y_pos + word_info['y_pos']))
         word_clips.append(word_clip)
         
-        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=highlightcolor, stroke_color="black", stroke_width=2).set_start(word_info['start']).set_duration(word_info['duration'])
+        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=highlightcolor, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH).set_start(word_info['start']).set_duration(word_info['duration'])
         word_clip_highlight = word_clip_highlight.set_position((centered_x_pos, start_y_pos + word_info['y_pos']))
         word_clips.append(word_clip_highlight)
         
     return word_clips  
 
-frame_size = (844, 1500)
+frame_size = (1080, 1920)
 
 all_linelevel_splits = []
 
@@ -247,12 +242,12 @@ audios.append(
     VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx(
         afx.audio_normalize).fx(
             afx.volumex,
-        0.8).set_start(29))
+        0.8).set_start(input_video_duration - 1.5))
 audios.append(
     AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).fx(
         afx.audio_normalize).fx(
             afx.volumex,
-        0.3).set_duration(35))
+        0.3).set_duration(input_video_duration))
 audios.append(transition_audio.set_start(2.6))
 audios.append(transition_audio.set_start(4.5))
 audios.append(transition_audio.set_start(6.5))
@@ -269,7 +264,7 @@ composite_audio_clip = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio_clip)
 
 # Save the final clip as a video file with the audio included
-final_video.subclip(0, 35).write_videofile(
+final_video.subclip(0, input_video_duration).write_videofile(
     os.path.join(folder_path, "output.mp4"),
     fps=30,
     codec="libx264",

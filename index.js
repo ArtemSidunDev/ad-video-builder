@@ -17,10 +17,12 @@ app.get('/', (req, res) => {
 app.post('/:templateName', async (req, res) => {
   try {
     const templateName = req.params.templateName;
-    const data = await handler.handle(templateName, req.body);
+    
+    handler.handle(templateName, req.body);
+    
     res.send({
       message: 'Processing request',
-      data
+      status: 'ok'
     });
   }
   catch (error) {

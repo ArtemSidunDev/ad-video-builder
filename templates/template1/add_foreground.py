@@ -18,8 +18,8 @@ args = parser.parse_args()
 folder_path = args.folderPath
 # Load your image using PIL
 video_fps = 30
-video_dest_width = 844
-video_dest_height = 1500
+video_dest_width = 1080
+video_dest_height = 1920
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
@@ -109,7 +109,7 @@ foreground_height = int(
     foreground_clip.size[1] *
     foreground_width /
     foreground_clip.size[0])
-foreground_clip = foreground_clip.speedx(1.04).resize((foreground_width, foreground_height))
+foreground_clip = foreground_clip.resize((foreground_width, foreground_height))
 
 # Apply the replace_green_background function to each frame of the
 # foreground video

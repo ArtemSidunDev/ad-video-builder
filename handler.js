@@ -2,6 +2,7 @@ const { exec } = require('child_process');
 const axios = require('axios');
 const fs = require('fs');
 const AWS = require('aws-sdk');
+const sharp = require('sharp');
 
 const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_S3_AD_VIDEOS_BUCKET } = process.env;
 
@@ -18,7 +19,10 @@ async function handle(templateName, data) {
     userId,
     media,
     avatarUrl,
-    musicUrl
+    musicUrl,
+    actionUrl,
+    callBackUrl,
+    errorCallBackUrl
   } = data;
   const folderPath = `./data/${adVideoId}`;
   try {
@@ -34,11 +38,9 @@ async function handle(templateName, data) {
     await Promise.all([
       download(siteScroll.url, `${folderPath}/ss.mp4`),
       download(avatarUrl, `${folderPath}/avatar.mp4`),
-      download('https://user-advideos.s3.amazonaws.com/static/action.mp4', `${folderPath}/action.mp4`),
+      download(actionUrl, `${folderPath}/action.mp4`),
       download(musicUrl, `${folderPath}/background_audio.mp3`)
     ]);
-
-    await generateSubtitles(folderPath);
     
     await Promise.all(videos.map(async (mediaItem, index) => {
       const mediaPath = `${folderPath}/${index+1}.mp4`;
@@ -46,36 +48,55 @@ async function handle(templateName, data) {
     }));
 
     await Promise.all(images.map(async (mediaItem, index) => {
+      const mediaPathOrg = `${folderPath}/${index+1}_org.png`;
       const mediaPath = `${folderPath}/${index+1}.png`;
-      await download(mediaItem.url, mediaPath);
+      await download(mediaItem.url, mediaPathOrg);
+
+      await sharp(mediaPathOrg)
+      .resize(2160)
+      .toFile(mediaPath);
     }));
 
-    await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
+    await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4 -vf "setpts=0.7143*PTS" -filter:a "atempo=1.4" ${folderPath}/avatar_speed.mp4`);
+
+    await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_speed_sound.mp4`);
     
-    console.log('start uploading to s3');
+    fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
+    fs.unlinkSync(`${folderPath}/avatar.mp4`);
+    fs.renameSync(`${folderPath}/avatar_speed_sound.mp4`, `${folderPath}/avatar.mp4`);
+
+    await generateSubtitles(folderPath);
+
+    await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
 
     const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${adVideoId}.mp4`);
     
-    console.log(url);
-    
     fs.rm(folderPath, { recursive: true }, (err) => {
       if (err) {
         console.error(err);
         return;
       }
     });
-    
-    return url
+
+    await axios.patch(callBackUrl, {
+      url,
+      status: 'done'
+    })
+
+    return true;
   } 
   catch (error) {
-    console.log(error);
+    console.error(error);
     fs.rm(folderPath, { recursive: true }, (err) => {
       if (err) {
         console.error(err);
         return;
       }
     });
-    return false;
+    await axios.patch(errorCallBackUrl, {
+      error,
+      status: 'error'
+    })
   }
 }
 
@@ -99,7 +120,6 @@ function uploadToS3(mediaPath, s3Key) {
   });
 }
 
-// download media function
 async function download(mediaUrl, mediaPath) {
   const writer = fs.createWriteStream(mediaPath);
   const response = await axios({
@@ -108,6 +128,10 @@ async function download(mediaUrl, mediaPath) {
     responseType: 'stream'
   });
   response.data.pipe(writer);
+  return new Promise((resolve, reject) => {
+    writer.on('finish', resolve);
+    writer.on('error', reject);
+  });
 }
 
 async function generateSubtitles(folderPath) {
