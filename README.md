@@ -41,7 +41,6 @@ pip3 install whisper-timestamped
 ```
 
 ### 6. Install project dependency
-Install whisper-timestamped using pip3:
 ```
 npm install
 ```

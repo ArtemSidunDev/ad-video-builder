@@ -71,12 +71,12 @@ async function handle(templateName, data) {
 
     const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${adVideoId}.mp4`);
     
-    fs.rm(folderPath, { recursive: true }, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
+    // fs.rm(folderPath, { recursive: true }, (err) => {
+    //   if (err) {
+    //     console.error(err);
+    //     return;
+    //   }
+    // });
 
     await axios.patch(callBackUrl, {
       url,
@@ -87,12 +87,12 @@ async function handle(templateName, data) {
   } 
   catch (error) {
     console.error(error);
-    fs.rm(folderPath, { recursive: true }, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
+    // fs.rm(folderPath, { recursive: true }, (err) => {
+    //   if (err) {
+    //     console.error(err);
+    //     return;
+    //   }
+    // });
     await axios.patch(errorCallBackUrl, {
       error,
       status: 'error'
