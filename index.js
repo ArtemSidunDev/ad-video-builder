@@ -2,7 +2,7 @@
 const dotenv = require('dotenv');
 dotenv.config('./.env');
 
-const handler = require('./handler');
+const handler = require('./src/handlers');
 const express = require('express');
 const app = express();
 

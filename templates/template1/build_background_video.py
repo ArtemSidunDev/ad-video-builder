@@ -624,8 +624,8 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Error executing command: {e}")
 
-# for file_name in os.listdir(temp_folder):
-#     file_path = os.path.join(temp_folder, file_name)
+for file_name in os.listdir(temp_folder):
+    file_path = os.path.join(temp_folder, file_name)
 
-#     if file_name != "background_video.mp4":
-#         os.remove(file_path)
+    if file_name != "background_video.mp4":
+        os.remove(file_path)
