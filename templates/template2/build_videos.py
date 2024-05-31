@@ -11,6 +11,13 @@ from PIL import Image
 from moviepy.editor import VideoClip, VideoFileClip, clips_array, concatenate_videoclips
 import subprocess
 import os
+import argparse
+
+parser = argparse.ArgumentParser(description="Generate a background video.")
+parser.add_argument('folderPath', type=str, help='Path to the folder')
+args = parser.parse_args()
+
+folder_path = args.folderPath
 
 # Load your image using PIL
 video_fps = 30
@@ -20,7 +27,7 @@ wipe_left_time = 400
 
 speed_factor = 1.04
 
-temp_folder = "./temp/"
+temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
     os.makedirs(temp_folder)
     
@@ -159,7 +166,7 @@ clip_length = get_video_length( idx=1)
 clip_start, clip_end = get_video_timespan( idx=1)
 
 # Load the image and convert it to RGB
-zoom_image = Image.open("./input/1.jpg").convert("RGB")
+zoom_image = Image.open(os.path.join(folder_path, "1.png")).convert("RGB")
 image_width, image_height = zoom_image.size
 
 dest_width, dest_height = video_dest_width, video_dest_height//2
@@ -169,7 +176,7 @@ zoom_dest = 1.3
 # Create the video clip using the modified zoom_in_frame function
 upper_video_clip = VideoClip(lambda t: zoom_frame(t), duration=transition_span)
 
-lower_video_clip = VideoFileClip("./input/Avatar.mp4").speedx(speed_factor).subclip(clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
+lower_video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
 
 # Stack the videos vertically
 composed_clip = clips_array([[upper_video_clip], [lower_video_clip]])
@@ -178,7 +185,7 @@ blur_duration = get_transition_span( idx = 1)
 clip_duration = clip_length
 blurred_clip = composed_clip.fl(apply_increasing_blur)
 
-blurred_clip.subclip( 0, transition_span).write_videofile(f"{temp_folder}01.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, transition_span).write_videofile(f"{temp_folder}/01.mp4", codec="libx264", fps=video_fps)
 
 zoom_image.close()
 upper_video_clip.close()
@@ -193,7 +200,7 @@ clip_length = get_video_length( idx=2)
 clip_start, clip_end = get_video_timespan( idx=2)
 
 # Load the image and convert it to RGB
-image = Image.open("./input/2.webp").convert("RGB")
+image = Image.open(os.path.join(folder_path, "2.png")).convert("RGB")
 
 original_width, original_height = image.size
 
@@ -221,7 +228,7 @@ zoom_dest = 0.9
 
 # Create the video clip using the modified zoom_in_frame function
 background_clip = VideoClip(lambda t: zoom_frame(t), duration=transition_span)
-foreground_clip = VideoFileClip("./input/foreground_video.mp4").speedx(speed_factor).subclip( clip_start, clip_end)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
 
 # Set foreground speacker size to 60% of background video
 foreground_width = int(background_clip.size[0] * 0.6)
@@ -236,7 +243,7 @@ processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t))
 blur_duration = get_transition_span( idx = 1)
 blurred_clip = processed_clip.fl(apply_decreasing_blur)
 # Write the processed video to a file
-blurred_clip.subclip( 0, transition_span).write_videofile( f"{temp_folder}02.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, transition_span).write_videofile( f"{temp_folder}/02.mp4", codec="libx264", fps=video_fps)
 
 zoom_image.close()
 background_clip.close()
@@ -250,7 +257,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=3)
 clip_start, clip_end = get_video_timespan( idx=3)
 
-clip = VideoFileClip("./input/screencast.MP4").subclip(5, 5 + clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(5, 5 + clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -265,7 +272,7 @@ cropped_clip = clip.crop( 0,  102,  new_width, 102 + new_height).resize( (video_
 
 background_clip = cropped_clip.subclip( 0, clip_length)
 
-foreground_clip = VideoFileClip("./input/foreground_video.mp4").speedx(speed_factor).subclip( clip_start, clip_end).crop(
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end).crop(
     0, int( video_dest_height / (0.8 * 8)), 0, int( 5*video_dest_height/ (0.8 * 8))).resize((video_dest_width*0.8, video_dest_height//2))
 
 # foreground_clip.write_videofile("output.mp4", fps=video_fps, codec="libx264")
@@ -275,7 +282,7 @@ foreground_x, foreground_y = ( video_dest_width - foreground_width)//2, video_de
 processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t))
 
 # Write the processed video to a file
-processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}03.mp4", codec="libx264", fps=video_fps)
+processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/03.mp4", codec="libx264", fps=video_fps)
 
 clip.close()
 cropped_clip.close()
@@ -289,7 +296,7 @@ processed_clip.close()
 clip_length = get_video_length( idx=4)
 clip_start, clip_end = get_video_timespan( idx=4)
 
-clip = VideoFileClip("./input/screencast.MP4").subclip(8, 5 + clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(8, 5 + clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -302,7 +309,7 @@ else:
 
 upper_video_clip = clip.crop( 0,  102,  new_width, 102 + new_height).resize( (video_dest_width, video_dest_height))
 
-image = Image.open("./input/4_1.webp")
+image = Image.open(os.path.join(folder_path, "3.png"))
 original_width, original_height = image.size
 
 aspect_ratio = original_width / original_height
@@ -336,13 +343,13 @@ lower_video_clip1 = VideoClip(moving_left_frame, duration=duration)
 blur_duration = 0.4
 clip_duration = duration
 lower_blurred_clip1 = lower_video_clip1.fl(apply_increasing_blur)
-lower_blurred_clip1.write_videofile(f"{temp_folder}04-1.mp4", codec="libx264", fps=video_fps)
+lower_blurred_clip1.write_videofile(f"{temp_folder}/04-1.mp4", codec="libx264", fps=video_fps)
 
 image.close()
 move_image.close()
 
 
-image = Image.open("./input/4_2.webp")
+image = Image.open(os.path.join(folder_path, "4.png"))
 original_width, original_height = image.size
 
 aspect_ratio = original_width / original_height
@@ -376,10 +383,12 @@ lower_video_clip2 = VideoClip(moving_right_frame, duration=duration)
 blur_duration = 0.4
 clip_duration = duration
 lower_blurred_clip2 = lower_video_clip2.fl(apply_decreasing_blur)
-lower_blurred_clip2.write_videofile(f"{temp_folder}04-2.mp4", codec="libx264", fps=video_fps)
+lower_blurred_clip2.write_videofile(f"{temp_folder}/04-2.mp4", codec="libx264", fps=video_fps)
 
-command = "ffmpeg-concat -T ../input/zoomin_transition.json -o 04_lower.mp4 04-1.mp4 04-2.mp4"
+output_file = f"{temp_folder}/04_lower.mp4"
 
+command = 'xvfb-run -s "-screen 0 1024x768x24" ' + "ffmpeg-concat -T ./templates/template2/input/zoomin_transition.json -o " + output_file + f" {temp_folder}/04-1.mp4" + f" {temp_folder}/04-2.mp4"
+print(command)
 try:
     completed_process = subprocess.run(
         command,
@@ -387,8 +396,7 @@ try:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=True,
-        text=True,
-        cwd=temp_folder
+        text=True
     )
     if completed_process.returncode == 0:
         print("Command output:")
@@ -399,7 +407,7 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"An error occurred while executing the command: {e.stderr}")
 
-lower_video_clip = VideoFileClip(f"{temp_folder}04_lower.mp4").subclip( 0, clip_length)
+lower_video_clip = VideoFileClip(f"{temp_folder}/04_lower.mp4").subclip( 0, clip_length)
 
 # add trasition
 def pop_from_bottom(t):
@@ -422,7 +430,7 @@ def pop_from_bottom(t):
     # return upper_frame
 
 trans_duration = 1/4
-foreground_clip = VideoFileClip("./input/foreground_video.mp4").speedx(speed_factor).subclip( clip_start ,clip_end).crop(
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start ,clip_end).crop(
     0, int( video_dest_height / (0.8 * 8)), 0, int( 5*video_dest_height/ (0.8 * 8))).resize((video_dest_width*0.8, video_dest_height//2))
 
 processed_clip = VideoClip(pop_from_bottom, duration=4)
@@ -431,7 +439,7 @@ blur_duration = get_transition_span( idx = 4)
 clip_duration = clip_length
 blurred_clip = processed_clip.fl(apply_increasing_blur)
 
-blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}04.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/04.mp4", codec="libx264", fps=video_fps)
 
 image.close()
 cropped_clip.close()
@@ -450,7 +458,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=5)
 clip_start, clip_end = get_video_timespan( idx=5)
 
-zoom_image = Image.open("./input/5.jpg").convert("RGB")
+zoom_image = Image.open(os.path.join(folder_path, "5.png")).convert("RGB")
 image_width, image_height = zoom_image.size
 
 dest_width, dest_height = video_dest_width, video_dest_height
@@ -461,7 +469,7 @@ zoom_dest = 0.9
 # Create the video clip using the modified zoom_in_frame function
 background_clip = VideoClip(lambda t: zoom_frame(t), duration=transition_span)
 
-foreground_clip = VideoFileClip("./input/foreground_video.mp4").speedx(speed_factor).subclip( clip_start, clip_end)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
 
 # Set foreground speacker size to 60% of background video
 foreground_width = int(background_clip.size[0] * 0.6)
@@ -473,13 +481,13 @@ foreground_x, foreground_y = 0, video_dest_height - foreground_height
 processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t))
 
 # Write the processed video to a file
-# processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}05.mp4", codec="libx264", fps=video_fps)
+# processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/05.mp4", codec="libx264", fps=video_fps)
 
 blur_duration = get_transition_span( idx = 4)
 clip_duration = clip_length
 blurred_clip = processed_clip.fl(apply_decreasing_blur)
 
-blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}05.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/05.mp4", codec="libx264", fps=video_fps)
 
 zoom_image.close()
 background_clip.close()
@@ -493,8 +501,8 @@ blurred_clip.close()
 clip_length = get_video_length( idx=6)
 clip_start, clip_end = get_video_timespan( idx=6)
 
-avatar_clip = VideoFileClip("./input/Avatar.mp4").speedx(speed_factor).subclip(clip_start ,clip_end)
-avatar_clip.write_videofile(f"{temp_folder}06.mp4", codec="libx264", fps=video_fps)
+avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start ,clip_end)
+avatar_clip.write_videofile(f"{temp_folder}/06.mp4", codec="libx264", fps=video_fps)
 avatar_clip.close()
 
 # ================ 7. Full screen avatar video ================================
@@ -503,7 +511,7 @@ avatar_clip.close()
 clip_length = get_video_length( idx=7)
 clip_start, clip_end = get_video_timespan( idx=7)
 
-image = Image.open("./input/7_1.jpg").convert("RGB")
+image = Image.open(os.path.join(folder_path, "6.png")).convert("RGB")
 
 original_width, original_height = image.size
 
@@ -535,13 +543,13 @@ blur_duration = 0.4
 clip_duration = transition_span
 upper_blurred_clip1 = upper_video_clip1.fl(apply_increasing_blur)
 
-upper_blurred_clip1.write_videofile(f"{temp_folder}07-1.mp4", fps=video_fps)
+upper_blurred_clip1.write_videofile(f"{temp_folder}/07-1.mp4", fps=video_fps)
 
 image.close()
 zoom_image.close()
 
 # for 7_2
-image = Image.open("./input/7_2.webp").convert("RGB")
+image = Image.open(os.path.join(folder_path, "7.png")).convert("RGB")
 
 original_width, original_height = image.size
 
@@ -574,10 +582,11 @@ blur_duration = 0.4
 clip_duration = transition_span
 upper_blurred_clip2 = upper_video_clip2.fl(apply_decreasing_blur)
 
-upper_blurred_clip2.write_videofile(f"{temp_folder}07-2.mp4", fps=video_fps)
+upper_blurred_clip2.write_videofile(f"{temp_folder}/07-2.mp4", fps=video_fps)
 
-# command = f'"C:\\Program Files\\FFmpeg\\ffmpeg.exe" -i 07-1.mp4 -i 07-2.mp4 -filter_complex "[0][1]xfade=transition=zoomin:duration=0.4:offset={clip_length/2-0.2},format=yuv420p" 07_upper.mp4'
-command = "ffmpeg-concat -T ../input/zoomin_transition.json -o 07_upper.mp4 07-1.mp4 07-2.mp4"
+output_file = f"{temp_folder}/07_upper.mp4"
+
+command = 'xvfb-run -s "-screen 0 1024x768x24" ' + "ffmpeg-concat -T ./templates/template2/input/zoomin_transition.json -o " + output_file +  f" {temp_folder}/07-1.mp4" + f" {temp_folder}/07-2.mp4"
 
 try:
     completed_process = subprocess.run(
@@ -586,8 +595,7 @@ try:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=True,
-        text=True,
-        cwd=temp_folder
+        text=True
     )
     if completed_process.returncode == 0:
         print("Command output:")
@@ -598,13 +606,13 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"An error occurred while executing the command: {e.stderr}")
 
-upper_video_clip = VideoFileClip(f"{temp_folder}07_upper.mp4").subclip( 0, clip_length)
+upper_video_clip = VideoFileClip(f"{temp_folder}/07_upper.mp4").subclip( 0, clip_length)
 
-lower_video_clip = VideoFileClip("./input/Avatar.mp4").speedx(speed_factor).subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
+lower_video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
 
 # Stack the videos vertically
 final_clip = clips_array([[upper_video_clip], [lower_video_clip]])
-# final_clip.write_videofile(f"{temp_folder}08.mp4", codec="libx264")
+# final_clip.write_videofile(f"{temp_folder}/08.mp4", codec="libx264")
 
 # Add transition
 def drop_from_top(t):
@@ -625,18 +633,18 @@ def drop_from_top(t):
     
     return back_frame
 
-back_frame = VideoFileClip("./input/Avatar.mp4").speedx(speed_factor).get_frame( clip_start).copy()
-
+back_frame = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).get_frame(clip_start).copy()
+print(back_frame.shape)
 transition_span = 1/4
 
-back_frame_clip = VideoFileClip("./input/Avatar.mp4").speedx(speed_factor).subclip( clip_start, clip_start + transition_span)
+back_frame_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_start + transition_span)
 processed_clip = VideoClip(drop_from_top, duration=5)
 
 blur_duration = get_transition_span( idx = 7)
 clip_duration = clip_length
 blurred_clip = processed_clip.fl(apply_increasing_blur)
 
-blurred_clip.subclip(0, clip_length).write_videofile(f"{temp_folder}07.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip(0, clip_length).write_videofile(f"{temp_folder}/07.mp4", codec="libx264", fps=video_fps)
 
 image.close()
 zoom_image.close()
@@ -655,7 +663,7 @@ clip_length = get_video_length( idx=8)
 clip_start, clip_end = get_video_timespan( idx=8)
 
 # Load the image and convert it to RGB
-image = Image.open("./input/10.webp").convert("RGB")
+image = Image.open(os.path.join(folder_path, "8.png")).convert("RGB")
 
 original_width, original_height = image.size
 
@@ -684,7 +692,7 @@ zoom_dest = 0.9
 
 # Create the video clip using the modified zoom_in_frame function
 background_clip = VideoClip(lambda t: zoom_frame(t), duration=transition_span)
-foreground_clip = VideoFileClip("./input/foreground_video.mp4").speedx(speed_factor).subclip( clip_start, clip_end)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).speedx(speed_factor).subclip( clip_start, clip_end)
 
 # Set foreground speacker size to 60% of background video
 foreground_width = int(background_clip.size[0] * 0.6)
@@ -699,7 +707,7 @@ blur_duration = get_transition_span( idx = 7)
 blurred_clip = processed_clip.fl(apply_decreasing_blur)
 
 # Write the processed video to a file
-blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}08.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/08.mp4", codec="libx264", fps=video_fps)
 
 image.close()
 background_clip.close()
@@ -713,8 +721,11 @@ blurred_clip.close()
 clip_length = get_video_length( idx=9)
 clip_start, clip_end = get_video_timespan( idx=9)
 
-avatar_clip = VideoFileClip("./input/Avatar.mp4").speedx(speed_factor).subclip( clip_start, clip_end)
-avatar_clip.write_videofile(f"{temp_folder}09.mp4", codec="libx264", fps=video_fps)
+clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
+clip_end = clip.duration
+
+avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
+avatar_clip.write_videofile(f"{temp_folder}/09.mp4", codec="libx264", fps=video_fps)
 avatar_clip.close()
 
 # ================ 10. Blur video ===============================
@@ -729,7 +740,7 @@ def blur_frame(frame):
 
 blur_amount = 3
 
-clip = VideoFileClip("./input/screencast.MP4").subclip(10, 10+clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(10, 10+clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -743,7 +754,7 @@ else:
 cropped_clip = clip.crop( 0,  102,  new_width, 102+new_height).resize( (video_dest_width, video_dest_height))
 background_clip = cropped_clip.fl_image(blur_frame)
 
-foreground_clip = VideoFileClip("./input/action.mp4").subclip( 0, clip_length - action_delay)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "action.mp4")).subclip( 0, clip_length - action_delay)
 
 foreground_width = background_clip.size[0]
 foreground_height = int( foreground_clip.size[1] * foreground_width / foreground_clip.size[0])
@@ -756,7 +767,7 @@ processed_clip =  concatenate_videoclips([ background_clip.subclip( 0, action_de
                                           , background_clip.subclip( action_delay, background_clip.duration).fl(lambda gf, t: add_foreground(gf(t), t))])
 
 # Write the processed video to a file
-processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}10.mp4", codec="libx264", fps=video_fps)
+processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/10.mp4", codec="libx264", fps=video_fps)
 
 background_clip.close()
 foreground_clip.close()
@@ -797,8 +808,12 @@ for command in commands:
 
 video_clip_names = ['01.mp4', '02-03.mp4', '04.mp4', '05-06.mp4', '07.mp4', '08.mp4', '09-10.mp4']
 
-command = ['ffmpeg-concat', '-T', "../input/transition.json",
-           '-o', 'background_video.mp4'] + video_clip_names
+#for each video clip, add the path to the temp folder
+video_clip_names = [os.path.join(temp_folder, clip) for clip in video_clip_names]
+background_video = os.path.join(temp_folder, 'background_video.mp4')
+
+command = ['xvfb-run -s "-screen 0 1024x768x24"', 'ffmpeg-concat', '-T', "./templates/template2/input/transition.json",
+           '-o', background_video] + video_clip_names
 try:
     completed_process = subprocess.run(
         " ".join(command),
@@ -806,8 +821,7 @@ try:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=True,
-        text=True,
-        cwd=temp_folder)
+        text=True)
     if completed_process.returncode == 0:
         print("Command output:")
         print(completed_process.stdout)

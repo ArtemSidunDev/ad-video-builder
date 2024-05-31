@@ -432,13 +432,6 @@ write_videoclips(cropped_clip, idx=10)
 clip.close()
 
 
-
-def get_safe_subclip(clip, start_time, end_time):
-    if start_time < 0:
-        start_time = 0
-    if end_time > clip.duration:
-        end_time = clip.duration
-    return clip.subclip(start_time, end_time)
 # ================== 11. Video subclip from avatar =======================
 # Time : 24.5-29s
 clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))

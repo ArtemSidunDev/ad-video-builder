@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Apr 26 00:26:48 2024
-
-@author: codemaven
-"""
 
 import numpy as np
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
@@ -22,11 +16,11 @@ args = parser.parse_args()
 folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
-FONT = "./templates/template2/input/ProximaNova-Black.ttf"
+FONT = "./templates/template3/ProximaNova-Black.ttf"
 FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#CEA636"
+FONT_HIGHLIGHT_COLOR = "#FE0000"
 FONT_OUTLINE_WIDTH = 4
 
 foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
@@ -34,7 +28,6 @@ foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
     os.makedirs(temp_folder)
-    
 
 with open(os.path.join(folder_path, 'transcription.json'), 'r') as f:
     wordlevel_info = json.load(f)
@@ -227,7 +220,7 @@ for line in linelevel_subtitles:
     all_linelevel_splits.extend(out)
 
 # Load the input video
-input_video = VideoFileClip(os.path.join(temp_folder, "background_video.mp4"))
+input_video = VideoFileClip(os.path.join(temp_folder, "overlapped_video.mp4"))
 # Get the duration of the input video
 input_video_duration = input_video.duration
 
@@ -235,8 +228,8 @@ input_video_duration = input_video.duration
 # also change frame_size, font size and color accordingly.
 final_video = CompositeVideoClip([input_video] + all_linelevel_splits)
 
-camera_audio = AudioFileClip("./templates/template2/input/camera.mp3").subclip(0.4, 0.8).fx(afx.audio_normalize).fx(afx.volumex, 0.5)
-transition_audio = AudioFileClip("./templates/template2/input/transition.wav").subclip(0, 0.4).fx(afx.audio_normalize).fx(afx.volumex, 0.3)
+camera_audio = AudioFileClip("./templates/template3/input/camera.mp3").subclip(0.4, 0.8).fx(afx.audio_normalize).fx(afx.volumex, 0.5)
+transition_audio = AudioFileClip("./templates/template3/input/transition.wav").subclip(0, 0.4).fx(afx.audio_normalize).fx(afx.volumex, 0.3)
 
 audios = [foreground_audio.fx( afx.audio_normalize)]
 
@@ -248,27 +241,24 @@ audios.append( AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).
 audios.append(camera_audio.set_start(1.8))
 audios.append(transition_audio.set_start(3.8))
 audios.append(transition_audio.set_start(6.8))
-audios.append(camera_audio.set_start(8.8))
+# audios.append(camera_audio.set_start(8.8))
 audios.append(camera_audio.set_start(10.8))
-audios.append(transition_audio.set_start(13.8))
-audios.append(transition_audio.set_start(15.8))
-audios.append(camera_audio.set_start(18.3))
-audios.append(camera_audio.set_start(20.8))
-audios.append(transition_audio.set_start(25.6))
-audios.append(transition_audio.set_start(29.8))
+audios.append(transition_audio.set_start(14.8))
+audios.append(camera_audio.set_start(17.8))
+audios.append(transition_audio.set_start(20.8))
+audios.append(camera_audio.set_start(23.8))
+audios.append(camera_audio.set_start(28.8))
 
-audios.append(
-    VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx(
-        afx.audio_normalize).fx( afx.volumex, 0.8).set_start(31.5))
+audios.append( VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx( afx.audio_normalize).fx( afx.volumex, 0.8).set_start(31.2))
 
 composite_audio_clip = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio_clip)
 
 # Save the final clip as a video file with the audio included
-final_video.subclip(0, input_video_duration).write_videofile(os.path.join(folder_path, "output.mp4"), fps=30, codec="libx264", audio_codec="aac")
+final_video.subclip(0, input_video_duration).write_videofile( os.path.join(folder_path, "output.mp4"), fps=30, codec="libx264", audio_codec="aac")
 
 try:
     shutil.rmtree(temp_folder)
-    # print(f"Folder '{temp_folder}' deleted successfully.")
+    print(f"Folder '{temp_folder}' deleted successfully.")
 except OSError as e:
     print(f"Error: {e}")

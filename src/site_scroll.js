@@ -13,13 +13,13 @@ const cleanup = async (screenshots) => {
     }
 };
 
-const createVideo = async (screenshots, siteScrollResultVideoPath) => {
+const createVideo = async (screenshots, siteScrollResultVideoPath, duration) => {
     const images = screenshots.map(screenshot => sharp(screenshot));
     const metaData = await images[2].metadata();
     const totalHeight = metaData.height;
-    const scrollSpeed = (totalHeight - 3840) / 15;
+    const scrollSpeed = (totalHeight - 3840) / duration;
 
-    const ffmpegCommand = `ffmpeg -loop 1 -i ${screenshots[2]} -filter_complex "[0:v]scale=2160:-1,format=yuv420p,fps=120[v];color=size=2160x3840:rate=120:color=black[d];[d][v]overlay=shortest=1:y='-(t*${scrollSpeed})'" -t 15 -pix_fmt yuv420p -preset ultrafast ${siteScrollResultVideoPath}`;
+    const ffmpegCommand = `ffmpeg -loop 1 -i ${screenshots[2]} -filter_complex "[0:v]scale=2160:-1,format=yuv420p,fps=120[v];color=size=2160x3840:rate=120:color=black[d];[d][v]overlay=shortest=1:y='-(t*${scrollSpeed})'" -t ${duration} -pix_fmt yuv420p -preset ultrafast ${siteScrollResultVideoPath}`;
 
     return new Promise((resolve, reject) => {
         exec(ffmpegCommand, (error, stdout, stderr) => {
@@ -66,7 +66,7 @@ const autoScroll = async (page) => {
     return attempts;
 };
 
-const run = async (siteUrl, siteScrollResultVideoPath, folderPath) => {
+const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
     const browser = await launch({args: ['--no-sandbox'] });
     const page = await browser.newPage();
 
@@ -120,7 +120,7 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath) => {
     screenshots.push(`${folderPath}/screenshot${i}.png`);
     await browser.close();
 
-    await createVideo(screenshots, siteScrollResultVideoPath);
+    await createVideo(screenshots, siteScrollResultVideoPath, duration);
     
     await cleanup(screenshots);
 };

@@ -28,11 +28,10 @@ async function handle(templateName, data) {
   }
   fs.mkdirSync(folderPath, { recursive: true });
   try {
-    await runSiteScroll(productUrl, `${folderPath}/ss.mp4`, folderPath);
-    
-    await prepare(folderPath, data);
-
-    await generateSubtitles(folderPath);
+    await Promise.all([
+      runSiteScroll(productUrl, `${folderPath}/ss.mp4`, folderPath, 25),
+      prepare(folderPath, data)
+    ]);
 
     await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
     
@@ -53,6 +52,7 @@ async function handle(templateName, data) {
     return true;
   } 
   catch (error) {
+    console.error(error);
     fs.rm(folderPath, { recursive: true }, (err) => {
       if (err) {
         console.error(err);
@@ -102,12 +102,14 @@ async function prepare(folderPath, data) {
 
   await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_speed_sound.mp4`);
 
-  await runCommand(`ffmpeg -i ${folderPath}/avatar_speed_sound.mp4 -vf "scale=2160:3840, hqdn3d=3.0:2.0:2.0:3.0, unsharp=5:5:1.0:5:5:0.0" -b:v 5M ${folderPath}/avatar_end.mp4`);
+  await runCommand(`ffmpeg -i ${folderPath}/avatar_speed_sound.mp4 -vf "scale=1080:1920" -b:v 2M ${folderPath}/avatar_end.mp4`);
   
   fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
   fs.unlinkSync(`${folderPath}/avatar_speed_sound.mp4`);
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
   fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
+
+  await generateSubtitles(folderPath);
 }
 
 async function generateSubtitles(folderPath) {

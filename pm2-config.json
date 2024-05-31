@@ -4,7 +4,7 @@
       "name": "zeely-ad-video-builder",
       "script": "./index.js",
       "instances": "1",
-      "watch": ["templates", "index.js", "handler.js"],
+      "watch": ["templates", "src"],
       "ignore_watch": ["node_modules", "data"]
     }
   ]
