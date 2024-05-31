@@ -741,7 +741,7 @@ def blur_frame(frame):
 
 blur_amount = 3
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.MP4")).subclip(8, 8+clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(8, 8+clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
