@@ -722,7 +722,7 @@ blur_duration = get_transition_span( idx = 9)
 clip_duration = avatar_clip.duration
 blurred_clip = blurred_start_clip.fl(apply_increasing_blur)
 
-blurred_clip.write_videofile(f"{temp_folder}/09.mp4", codec="libx264", fps=video_fps)
+blurred_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True,codec="libx264", fps=video_fps)
 print('==================== 9. Zoomming Out Video END ===============================')
 avatar_clip.close()
 blurred_start_clip.close()

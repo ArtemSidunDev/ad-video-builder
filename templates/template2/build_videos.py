@@ -185,7 +185,7 @@ blur_duration = get_transition_span( idx = 1)
 clip_duration = clip_length
 blurred_clip = composed_clip.fl(apply_increasing_blur)
 
-blurred_clip.subclip( 0, transition_span).write_videofile(f"{temp_folder}/01.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, transition_span).write_videofile(f"{temp_folder}/01.mp4", temp_audiofile=f"{temp_folder}/01.mp3", remove_temp=True, codec="libx264", fps=video_fps)
 
 zoom_image.close()
 upper_video_clip.close()
@@ -502,7 +502,7 @@ clip_length = get_video_length( idx=6)
 clip_start, clip_end = get_video_timespan( idx=6)
 
 avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start ,clip_end)
-avatar_clip.write_videofile(f"{temp_folder}/06.mp4", codec="libx264", fps=video_fps)
+avatar_clip.write_videofile(f"{temp_folder}/06.mp4", temp_audiofile=f"{temp_folder}/06.mp3", remove_temp=True, codec="libx264", fps=video_fps)
 avatar_clip.close()
 
 # ================ 7. Full screen avatar video ================================
@@ -725,7 +725,7 @@ clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
 clip_end = clip.duration
 
 avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
-avatar_clip.write_videofile(f"{temp_folder}/09.mp4", codec="libx264", fps=video_fps)
+avatar_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True, codec="libx264", fps=video_fps)
 avatar_clip.close()
 
 # ================ 10. Blur video ===============================

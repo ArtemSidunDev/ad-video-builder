@@ -34,9 +34,10 @@ async function handle(templateName, data) {
     ]);
 
     await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
-    
+    const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
     const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${adVideoId}.mp4`);
-    
+    const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${adVideoId}_cover.png`, 'image/png');
+
     fs.rm(folderPath, { recursive: true }, (err) => {
       if (err) {
         console.error(err);
@@ -46,6 +47,7 @@ async function handle(templateName, data) {
 
     await axios.patch(callBackUrl, {
       url,
+      coverUrl,
       status: 'done'
     })
 
@@ -137,14 +139,20 @@ async function generateSubtitles(folderPath) {
   return `${folderPath}/transcription.json`;
 }
 
-function uploadToS3(mediaPath, s3Key) {
+async function createCover(videoPath, folderPath) {
+  const outputPath = `${folderPath}/output_cover.png`;
+  await runCommand(`ffmpeg -ss 1 -i ${videoPath} -vframes 1 ${outputPath}`);
+  return outputPath;
+}
+
+function uploadToS3(mediaPath, s3Key, contentType = 'video/mp4') {
   const fileContent = fs.readFileSync(mediaPath);
 
   const params = {
     Bucket: AWS_S3_AD_VIDEOS_BUCKET,
     Key: s3Key,
     Body: fileContent,
-    ContentType: 'video/mp4',
+    ContentType: contentType,
   };
   return new Promise((resolve, reject) => {
     s3.upload(params, function(err, data) {

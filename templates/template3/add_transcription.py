@@ -16,7 +16,7 @@ args = parser.parse_args()
 folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
-FONT = "./templates/template3/ProximaNova-Black.ttf"
+FONT = "./templates/template3/input/ProximaNova-Black.ttf"
 FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
@@ -255,7 +255,7 @@ composite_audio_clip = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio_clip)
 
 # Save the final clip as a video file with the audio included
-final_video.subclip(0, input_video_duration).write_videofile( os.path.join(folder_path, "output.mp4"), fps=30, codec="libx264", audio_codec="aac")
+final_video.subclip(0, input_video_duration).write_videofile(os.path.join(folder_path, "output.mp4"), temp_audiofile=f"{temp_folder}/output.aac", remove_temp=True, codec="libx264", audio_codec="aac", fps=30)
 
 try:
     shutil.rmtree(temp_folder)

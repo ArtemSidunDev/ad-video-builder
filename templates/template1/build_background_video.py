@@ -73,9 +73,15 @@ def get_timestamp_without_transtion_span(idx):
 
 def write_videoclips(video_clip, idx):
     start, end = get_timestamp_without_transtion_span(idx)
-    video_clip.subclip(
-        0, video_clip.duration).write_videofile(
-            f"{temp_folder}/{idx:02d}.mp4", fps=video_fps)
+    # if ids is 11 or 12 add temp audio folder to path
+    if idx in (11, 12):
+        video_clip.subclip(
+            0, video_clip.duration).write_videofile(
+                f"{temp_folder}/{idx:02d}.mp4", fps=video_fps, temp_audiofile=f"{temp_folder}/{idx}.mp3", remove_temp=True)
+    else:
+        video_clip.subclip(
+            0, video_clip.duration).write_videofile(
+                f"{temp_folder}/{idx:02d}.mp4", fps=video_fps)
                 
 # Create the video clip for moving right effect
 def moving_right_frame(t):
