@@ -316,7 +316,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=3)
 clip_start, clip_end = get_video_timespan( idx=3)
 
-background_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start, clip_end)
+background_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end)
 foreground_clip_orignal = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(0, clip_length)
 # Resize foreground video to match background video dimensions
 foreground_clip_cropped = foreground_clip_orignal.crop( 0, 110, foreground_clip_orignal.w, foreground_clip_orignal.h - 200)
@@ -348,7 +348,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=4)
 clip_start, clip_end = get_video_timespan( idx=4)
 
-background_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start, clip_end)
+background_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end)
 
 image = Image.open(os.path.join(folder_path, "3.png")).convert("RGB")
 
@@ -706,14 +706,13 @@ composed_clip.close()
 blurred_clip.close()
 # ===================== 9. Zoomming Out Video ==================================
 # Time: 24-29
-print('==================== 9. Zoomming Out Video START ===============================')
-clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
+clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
 clip_length = get_video_length( idx=9)
 clip_start, clip_end = get_video_timespan( idx=9)
-print(clip_end)
+
 clip_end = clip.duration
-print(clip_end)
-avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
+
+avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end)
 
 blur_duration = get_transition_span( idx = 8)
 blurred_start_clip = avatar_clip.fl(apply_decreasing_blur)
@@ -723,7 +722,6 @@ clip_duration = avatar_clip.duration
 blurred_clip = blurred_start_clip.fl(apply_increasing_blur)
 
 blurred_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True,codec="libx264", fps=video_fps)
-print('==================== 9. Zoomming Out Video END ===============================')
 avatar_clip.close()
 blurred_start_clip.close()
 blurred_clip.close()

@@ -23,7 +23,7 @@ FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#FE0000"
 FONT_OUTLINE_WIDTH = 4
 
-foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
+foreground_audio = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).audio
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
@@ -64,7 +64,6 @@ def get_sentences_from_words(word_list):
 
 def split_text_into_lines(word_list):
     subtitles = []
-
     sentences = get_sentences_from_words(word_list)
     
     for data in sentences:
@@ -76,11 +75,14 @@ def split_text_into_lines(word_list):
         MaxGap = 1.5
         
         sentence, start_idx, end_idx = data
-        count = len( sentence)
+        count = len(sentence)
         
-        MaxChars = math.ceil( count/(math.ceil(count/MaxChars)))
+        MaxChars = math.ceil(count / (math.ceil(count / MaxChars)))
         
-        for idx in range( start_idx, end_idx+1):
+        for idx in range(start_idx, end_idx + 1):
+            if idx >= len(word_list):
+                break
+                
             word_data = word_list[idx]
             start = word_data["start"]
             end = word_data["end"]
@@ -90,15 +92,12 @@ def split_text_into_lines(word_list):
     
             temp = " ".join(item["word"] for item in line)
     
-            # Check if adding a new word exceeds the maximum character count or
-            # duration
             new_line_chars = len(temp)
-    
             duration_exceeded = line_duration > MaxDuration
             chars_exceeded = new_line_chars > MaxChars
+            
             if idx > 0:
                 gap = word_data['start'] - word_list[idx - 1]['end']
-                # print (word,start,end,gap)
                 maxgap_exceeded = gap > MaxGap
             else:
                 maxgap_exceeded = False
@@ -114,6 +113,7 @@ def split_text_into_lines(word_list):
                     subtitles.append(subtitle_line)
                     line = []
                     line_duration = 0
+        
         if line:
             subtitle_line = {
                 "word": " ".join(item["word"] for item in line),
@@ -122,8 +122,8 @@ def split_text_into_lines(word_list):
                 "textcontents": line
             }
             subtitles.append(subtitle_line)
+    
     return subtitles
-
 
 linelevel_subtitles = split_text_into_lines(wordlevel_info)
 
