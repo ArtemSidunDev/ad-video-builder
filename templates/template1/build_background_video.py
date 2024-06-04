@@ -367,7 +367,7 @@ def split_top_bottom(t):
 start_time = 0.2
 end_time = 0.8
 front_image = Image.fromarray(video_clip.get_frame(2.49))
-video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(
+video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(
     get_timestamp_with_transtion_span(8)[0],
     get_timestamp_with_transtion_span(8)[1]).resize(
         (video_dest_width,
@@ -440,7 +440,7 @@ clip.close()
 
 # ================== 11. Video subclip from avatar =======================
 # Time : 24.5-29s
-clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
+clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
 
 start_time, end_time = get_timestamp_with_transtion_span(11)
 

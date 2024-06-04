@@ -111,6 +111,8 @@ async function prepare(folderPath, data) {
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
   fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
 
+  await runCommand(`./templates/common/run.sh ${folderPath}`);
+
   await generateSubtitles(folderPath);
 }
 

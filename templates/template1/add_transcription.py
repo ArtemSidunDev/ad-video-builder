@@ -29,7 +29,7 @@ FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#CEA636"
 FONT_OUTLINE_WIDTH = 4
 
-foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
+foreground_audio = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).audio
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):

@@ -176,7 +176,7 @@ zoom_dest = 1.3
 # Create the video clip using the modified zoom_in_frame function
 upper_video_clip = VideoClip(lambda t: zoom_frame(t), duration=transition_span)
 
-lower_video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
+lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
 
 # Stack the videos vertically
 composed_clip = clips_array([[upper_video_clip], [lower_video_clip]])
@@ -501,7 +501,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=6)
 clip_start, clip_end = get_video_timespan( idx=6)
 
-avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip(clip_start ,clip_end)
+avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start ,clip_end)
 avatar_clip.write_videofile(f"{temp_folder}/06.mp4", temp_audiofile=f"{temp_folder}/06.mp3", remove_temp=True, codec="libx264", fps=video_fps)
 avatar_clip.close()
 
@@ -608,7 +608,7 @@ except subprocess.CalledProcessError as e:
 
 upper_video_clip = VideoFileClip(f"{temp_folder}/07_upper.mp4").subclip( 0, clip_length)
 
-lower_video_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
+lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
 
 # Stack the videos vertically
 final_clip = clips_array([[upper_video_clip], [lower_video_clip]])
@@ -633,11 +633,11 @@ def drop_from_top(t):
     
     return back_frame
 
-back_frame = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).get_frame(clip_start).copy()
+back_frame = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).get_frame(clip_start).copy()
 print(back_frame.shape)
 transition_span = 1/4
 
-back_frame_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_start + transition_span)
+back_frame_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_start + transition_span)
 processed_clip = VideoClip(drop_from_top, duration=5)
 
 blur_duration = get_transition_span( idx = 7)
@@ -721,10 +721,10 @@ blurred_clip.close()
 clip_length = get_video_length( idx=9)
 clip_start, clip_end = get_video_timespan( idx=9)
 
-clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
+clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
 clip_end = clip.duration
 
-avatar_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
+avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end)
 avatar_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True, codec="libx264", fps=video_fps)
 avatar_clip.close()
 
