@@ -37,6 +37,6 @@ def process_video(video_path, background_image_path, output_path):
     
     new_video = video.fl_image(lambda frame: remove_green_background(frame, background_image))
     
-    new_video.write_videofile(output_path, temp_audiofile=f"{folder_path}/09.mp3", remove_temp=True, codec='libx264', fps=30)
+    new_video.write_videofile(output_path, temp_audiofile=f"{folder_path}/bg_avatar.mp3", remove_temp=True, codec='libx264', fps=30)
 
 process_video(f"{folder_path}/avatar.mp4", "./templates/common/input/background_image.jpg", f"{folder_path}/bg_avatar.mp4")
