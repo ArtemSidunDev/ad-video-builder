@@ -38,13 +38,6 @@ async function handle(templateName, data) {
     const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${adVideoId}.mp4`);
     const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${adVideoId}_cover.png`, 'image/png');
 
-    fs.rm(folderPath, { recursive: true }, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-
     await axios.patch(callBackUrl, {
       url,
       coverUrl,
@@ -52,19 +45,19 @@ async function handle(templateName, data) {
     })
 
     return true;
-  } 
-  catch (error) {
+  } catch (error) {
     console.error(error);
+    await axios.patch(errorCallBackUrl, {
+      error,
+      status: 'error'
+    })
+  } finally {
     fs.rm(folderPath, { recursive: true }, (err) => {
       if (err) {
         console.error(err);
         return;
       }
     });
-    await axios.patch(errorCallBackUrl, {
-      error,
-      status: 'error'
-    })
   }
 }
 
@@ -99,8 +92,9 @@ async function prepare(folderPath, data) {
       fs.unlinkSync(mediaPathOrg);
     })
   ]);
+  const acceleration= await getAcceleration(`${folderPath}/avatar.mp4`, 27);
 
-  await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4 -vf "setpts=0.7143*PTS" -filter:a "atempo=1.4" ${folderPath}/avatar_speed.mp4`);
+  await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4  -vf "setpts=${1/acceleration}*PTS" -filter:a "atempo=${acceleration}" -q:v 3 -q:a 3 ${folderPath}/avatar_speed.mp4`);
 
   await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_speed_sound.mp4`);
 
@@ -204,6 +198,34 @@ async function runCommand(command) {
       console.log('stderr: ' + data);
     });
   });
+}
+
+async function getVideoDuration(filePath) {
+  const data = await runCommand(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${filePath}`);
+  return parseFloat(data.trim());
+}
+
+async function getAcceleration(inputPath, minDuration) {
+  const standardAcceleration = 1.3;
+  try {
+      const duration = await getVideoDuration(inputPath);
+      console.log(`Video duration: ${duration}`);
+      let acceleration = standardAcceleration;
+
+      let resultingDuration = duration / acceleration;
+
+      if (resultingDuration < minDuration) {
+          acceleration = duration / minDuration;
+          if(acceleration < 1) {
+            acceleration = 1;
+          }
+      }
+      console.log(`Video accelerated with factor ${acceleration}.`);
+      
+      return acceleration;
+  } catch (error) {
+      console.error('Error accelerating video:', error);
+  }
 }
 
 

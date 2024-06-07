@@ -22,7 +22,7 @@ const createVideo = async (screenshots, siteScrollResultVideoPath, duration) => 
     const ffmpegCommand = `ffmpeg -loop 1 -i ${screenshots[2]} -filter_complex "[0:v]scale=2160:-1,format=yuv420p,fps=120[v];color=size=2160x3840:rate=120:color=black[d];[d][v]overlay=shortest=1:y='-(t*${scrollSpeed})'" -t ${duration} -pix_fmt yuv420p -preset ultrafast ${siteScrollResultVideoPath}`;
 
     return new Promise((resolve, reject) => {
-        exec(ffmpegCommand, (error, stdout, stderr) => {
+        const data = exec(ffmpegCommand, (error, stdout, stderr) => {
             if (error) {
                 console.error(error);
                 console.error(stderr);
@@ -67,6 +67,7 @@ const autoScroll = async (page) => {
 };
 
 const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
+    console.log('Running site scroll');
     const browser = await launch({args: ['--no-sandbox'] });
     const page = await browser.newPage();
 
@@ -98,7 +99,7 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
     await autoScroll(page);
     await delay(1000);
     let i = 0;
-
+    console.log('Taking screenshots');
     await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'png' });
     screenshots.push(`${folderPath}/screenshot${i}.png`);
     i++;
@@ -118,11 +119,13 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
     .toFile(`${folderPath}/screenshot${i}.png`);
     
     screenshots.push(`${folderPath}/screenshot${i}.png`);
+    console.log('Screenshots taken');
     await browser.close();
-
+    console.log('Site scroll screenshots created');
     await createVideo(screenshots, siteScrollResultVideoPath, duration);
-    
+    console.log('Site scroll video created');
     await cleanup(screenshots);
+    console.log('Site scroll finished');
 };
 
 module.exports = {
