@@ -52,12 +52,12 @@ async function handle(templateName, data) {
       status: 'error'
     })
   } finally {
-    // fs.rm(folderPath, { recursive: true }, (err) => {
-    //   if (err) {
-    //     console.error(err);
-    //     return;
-    //   }
-    // });
+    fs.rm(folderPath, { recursive: true }, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
   }
 }
 
