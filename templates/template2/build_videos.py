@@ -777,11 +777,12 @@ processed_clip.close()
 # =========================  Concantenate Videos  =============================
 # =============================================================================
 
+video9 = VideoFileClip(f"{temp_folder}/09.mp4")
 
 commands = [
     f'ffmpeg -i 02.mp4 -i 03.mp4 -filter_complex "[0][1]xfade=transition=slideup:duration={get_transition_span(idx=2)}:offset={video_spans[1]},format=yuv420p" 02-03.mp4',
     f'ffmpeg -i 05.mp4 -i 06.mp4 -filter_complex "[0][1]xfade=transition=slideleft:duration={get_transition_span(idx=5)}:offset={video_spans[4]},format=yuv420p" 05-06.mp4',
-    f'ffmpeg -i 09.mp4 -i 10.mp4 -filter_complex "[0][1]xfade=transition=slideleft:duration={get_transition_span(idx=9)}:offset={video_spans[8]},format=yuv420p" 09-10.mp4',
+    f'ffmpeg -i 09.mp4 -i 10.mp4 -filter_complex "[0][1]xfade=transition=slideleft:duration={get_transition_span(idx=9)}:offset={video9.duration - get_transition_span(idx=9)},format=yuv420p" 09-10.mp4',
 ]
 
 # Execute each command in the temp folder
