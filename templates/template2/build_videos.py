@@ -387,7 +387,7 @@ lower_blurred_clip2.write_videofile(f"{temp_folder}/04-2.mp4", codec="libx264", 
 
 output_file = f"{temp_folder}/04_lower.mp4"
 
-command = 'xvfb-run -s "-screen 0 1024x768x24" ' + "ffmpeg-concat -T ./templates/template2/input/zoomin_transition.json -o " + output_file + f" {temp_folder}/04-1.mp4" + f" {temp_folder}/04-2.mp4"
+command = "ffmpeg-concat -T ./templates/template2/input/zoomin_transition.json -o " + output_file + f" {temp_folder}/04-1.mp4" + f" {temp_folder}/04-2.mp4"
 print(command)
 try:
     completed_process = subprocess.run(
@@ -586,7 +586,7 @@ upper_blurred_clip2.write_videofile(f"{temp_folder}/07-2.mp4", fps=video_fps)
 
 output_file = f"{temp_folder}/07_upper.mp4"
 
-command = 'xvfb-run -s "-screen 0 1024x768x24" ' + "ffmpeg-concat -T ./templates/template2/input/zoomin_transition.json -o " + output_file +  f" {temp_folder}/07-1.mp4" + f" {temp_folder}/07-2.mp4"
+command = "ffmpeg-concat -T ./templates/template2/input/zoomin_transition.json -o " + output_file +  f" {temp_folder}/07-1.mp4" + f" {temp_folder}/07-2.mp4"
 
 try:
     completed_process = subprocess.run(
@@ -812,7 +812,7 @@ video_clip_names = ['01.mp4', '02-03.mp4', '04.mp4', '05-06.mp4', '07.mp4', '08.
 video_clip_names = [os.path.join(temp_folder, clip) for clip in video_clip_names]
 background_video = os.path.join(temp_folder, 'background_video.mp4')
 
-command = ['xvfb-run -s "-screen 0 1024x768x24"', 'ffmpeg-concat', '-T', "./templates/template2/input/transition.json",
+command = ['ffmpeg-concat', '-T', "./templates/template2/input/transition.json",
            '-o', background_video] + video_clip_names
 try:
     completed_process = subprocess.run(

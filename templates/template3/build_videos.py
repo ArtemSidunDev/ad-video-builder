@@ -270,7 +270,7 @@ video_clip.close()
 blurred_clip.close()
 
 # Concatenate video 1 and video 2
-command = 'xvfb-run -s "-screen 0 1024x768x24" ' + f"ffmpeg-concat -t SimpleZoom -d {int(transition_spans[0]*1000)} -o 01-02-back.mp4 01.mp4 02.mp4"
+command = f"ffmpeg-concat -t SimpleZoom -d {int(transition_spans[0]*1000)} -o 01-02-back.mp4 01.mp4 02.mp4"
 
 try:
     completed_process = subprocess.run(
@@ -784,7 +784,7 @@ video_clip_names = ['01-02.mp4', '03.mp4', '04.mp4', '05.mp4', '06.mp4', '07-08.
 video_clip_names = [os.path.join(temp_folder, video_clip_name) for video_clip_name in video_clip_names]
 
 background_video = os.path.join(temp_folder, "background_video.mp4")
-command = ['xvfb-run -s "-screen 0 1024x768x24" ', 'ffmpeg-concat', '-T', "./templates/template3/input/transition.json",
+command = ['ffmpeg-concat', '-T', "./templates/template3/input/transition.json",
             '-o', background_video] + video_clip_names
 try:
     completed_process = subprocess.run(
