@@ -16,7 +16,7 @@ args = parser.parse_args()
 folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
-FONT = "./templates/template1/input/ProximaNova-Bold.ttf"
+FONT = "./templates/template1/input/ProximaNova-Black.ttf"
 FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
