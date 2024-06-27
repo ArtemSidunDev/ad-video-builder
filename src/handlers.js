@@ -136,8 +136,8 @@ async function generateSubtitles(folderPath) {
 }
 
 async function createCover(videoPath, folderPath) {
-  const outputPath = `${folderPath}/output_cover.png`;
-  await runCommand(`ffmpeg -ss 1 -i ${videoPath} -vframes 1 ${outputPath}`);
+  const outputPath = `${folderPath}/output_cover.jpeg`;
+  await runCommand(`ffmpeg -ss 1 -i ${videoPath} -vframes 1 -compression_level 6 -q:v 80 ${outputPath}`);
   return outputPath;
 }
 

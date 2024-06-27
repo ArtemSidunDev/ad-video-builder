@@ -257,7 +257,7 @@ audios.append(transition_audio.set_start(14.8))
 audios.append(camera_audio.set_start(17.8))
 audios.append(transition_audio.set_start(20.8))
 audios.append(camera_audio.set_start(23.8))
-audios.append(camera_audio.set_start(28.8))
+audios.append(camera_audio.set_start(foreground_audio.duration - 0.7))
 
 audios.append( VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx( afx.audio_normalize).fx( afx.volumex, 0.8).set_start(31.2))
 
