@@ -455,10 +455,38 @@ blurred_clip.close()
 # ================ 5. ZoomIn + Avatar( Left) ==================================
 # Time 11-14s
 
+def prepare_image(image_path, dest_width, dest_height):
+    # Load the image and convert it to RGB
+    image = Image.open(image_path).convert("RGB")
+    original_width, original_height = image.size
+
+    # Calculate the aspect ratio of the image and the destination
+    aspect_ratio = original_width / original_height
+    dest_ratio = dest_width / dest_height
+
+    # Adjust the image size to match the destination aspect ratio
+    if aspect_ratio > dest_ratio:
+        new_width = int(original_height * dest_ratio)
+        new_height = original_height
+    else:
+        new_width = original_width
+        new_height = int(original_width / dest_ratio)
+
+    # Center the cropped area
+    left = (original_width - new_width) / 2
+    top = (original_height - new_height) / 2
+    right = (original_width + new_width) / 2
+    bottom = (original_height + new_height) / 2
+
+    # Crop and resize the image
+    cropped_image = image.crop((left, top, right, bottom)).resize((dest_width, dest_height), Image.Resampling.LANCZOS)
+    return cropped_image
+
 clip_length = get_video_length( idx=5)
 clip_start, clip_end = get_video_timespan( idx=5)
 
-zoom_image = Image.open(os.path.join(folder_path, "5.png")).convert("RGB")
+# zoom_image = Image.open(os.path.join(folder_path, "5.png")).convert("RGB")
+zoom_image = prepare_image(os.path.join(folder_path, "5.png"), video_dest_width, video_dest_height)
 image_width, image_height = zoom_image.size
 
 dest_width, dest_height = video_dest_width, video_dest_height
