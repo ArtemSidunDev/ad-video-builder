@@ -16,6 +16,10 @@ sleep 2
 python3 ./templates/template3/build_videos.py $folder_path
 python3 ./templates/template3/add_transcription.py $folder_path
 
-kill $XVFB_PID
+if ps -p $XVFB_PID > /dev/null
+
+then
+    kill $XVFB_PID
+fi
 
 

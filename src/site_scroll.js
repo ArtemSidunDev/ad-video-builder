@@ -5,7 +5,7 @@ const { launch } = require('puppeteer');
 
 const width = 430;
 const height = 932;
-const deviceScaleFactor = 4;
+const deviceScaleFactor = 1;
 
 const cleanup = async (screenshots) => {
     for (const file of screenshots) {
@@ -63,12 +63,12 @@ const autoScroll = async (page) => {
     }
     await page.evaluate(() => window.scrollTo(0, 0));
     await delay(1000);
-    return attempts;
+    return attempts * scrollStep;
 };
 
 const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
     console.log('Running site scroll');
-    const browser = await launch({args: ['--no-sandbox'] });
+    const browser = await launch({args: ['--no-sandbox'], headless: false});
     const page = await browser.newPage();
 
     await page.emulate({
@@ -96,17 +96,33 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
         }
     });
 
-    await autoScroll(page);
+    const siteHeight = await autoScroll(page);
     await delay(1000);
     let i = 0;
     console.log('Taking screenshots');
-    await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'png' });
-    screenshots.push(`${folderPath}/screenshot${i}.png`);
-    i++;
     
-    await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'png' });
-    screenshots.push(`${folderPath}/screenshot${i}.png`);
-    i++;
+    if(siteHeight > 10000) {
+        page.setViewport({
+            width,
+            height: 932 * 7,
+            deviceScaleFactor,
+        });
+        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
+        screenshots.push(`${folderPath}/screenshot${i}.png`);
+        i++;
+        await delay(1000);
+        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
+        screenshots.push(`${folderPath}/screenshot${i}.png`);
+        i++;
+    } else {
+        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
+        screenshots.push(`${folderPath}/screenshot${i}.png`);
+        i++;
+        await delay(1000);
+        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
+        screenshots.push(`${folderPath}/screenshot${i}.png`);
+        i++;
+    }
     
     await sharp(`${folderPath}/screenshot${i-1}.png`)
     .resize(2160)

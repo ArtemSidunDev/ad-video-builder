@@ -18,4 +18,8 @@ python3 ./templates/template1/build_background_video.py $folder_path
 python3 ./templates/template1/add_foreground.py $folder_path
 python3 ./templates/template1/add_transcription.py $folder_path
 
-kill $XVFB_PID
+if ps -p $XVFB_PID > /dev/null
+
+then
+    kill $XVFB_PID
+fi
