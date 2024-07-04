@@ -68,7 +68,7 @@ const autoScroll = async (page) => {
 
 const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
     console.log('Running site scroll');
-    const browser = await launch({args: ['--no-sandbox'], headless: false});
+    const browser = await launch({args: ['--no-sandbox']});
     const page = await browser.newPage();
 
     await page.emulate({
