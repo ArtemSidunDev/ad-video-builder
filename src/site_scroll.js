@@ -83,7 +83,7 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
         userAgent: 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Mobile Safari/537.36'
     });
 
-    await page.goto(siteUrl);
+    await page.goto(siteUrl, {timeout: 0});
     
     const screenshots = [];
     
