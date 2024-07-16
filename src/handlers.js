@@ -3,6 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 const AWS = require('aws-sdk');
 const sharp = require('sharp');
+const { v4: uuidv4 } = require('uuid');
 const { run: runSiteScroll } = require('./site_scroll.js');
 
 const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_S3_AD_VIDEOS_BUCKET } = process.env;
@@ -35,8 +36,11 @@ async function handle(templateName, data) {
 
     await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
     const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
-    const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${adVideoId}.mp4`);
-    const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${adVideoId}_cover.png`, 'image/png');
+    
+    const fileName = uuidv4();
+
+    const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${fileName}.mp4`);
+    const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${fileName}_cover.png`, 'image/png');
 
     await axios.patch(callBackUrl, {
       url,
