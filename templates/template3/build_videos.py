@@ -21,9 +21,9 @@ folder_path = args.folderPath
 
 # Load your image using PIL
 video_fps = 30
-video_dest_width = 1080
-video_dest_height = 1920
-wipe_left_time = 400
+video_dest_width = 2160
+video_dest_height = 3840
+wipe_left_time = 800
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):

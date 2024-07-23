@@ -17,11 +17,14 @@ folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
 FONT = "./templates/template2/input/ProximaNova-Black.ttf"
-FONT_SIZE = 80
+FONT_SIZE = 160
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#CEA636"
-FONT_OUTLINE_WIDTH = 4
+FONT_OUTLINE_WIDTH = 8
+
+video_dest_width = 2160
+video_dest_height = 3840
 
 foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
 
@@ -224,7 +227,7 @@ def create_caption(
         
     return word_clips  
 
-frame_size = (1080, 1920)
+frame_size = (video_dest_width, video_dest_height)
 
 all_linelevel_splits = []
 

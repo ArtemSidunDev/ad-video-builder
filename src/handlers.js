@@ -5,6 +5,7 @@ const AWS = require('aws-sdk');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 const { run: runSiteScroll } = require('./site_scroll.js');
+const path = require('path');
 
 const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_S3_AD_VIDEOS_BUCKET } = process.env;
 
@@ -25,7 +26,12 @@ async function handle(templateName, data) {
   } = data;
   const folderPath = `./data/${adVideoId}`;
   if (fs.existsSync(folderPath)) {
-    fs.rm(folderPath, { recursive: true })
+    fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
   }
   fs.mkdirSync(folderPath, { recursive: true });
   try {
@@ -90,7 +96,7 @@ async function prepare(folderPath, data) {
       await download(mediaItem.url, mediaPathOrg);
   
       await sharp(mediaPathOrg)
-      .resize(2160)
+      .resize(4320)
       .jpeg({ quality: 100 })
       .toFile(mediaPath);
       fs.unlinkSync(mediaPathOrg);
@@ -102,7 +108,7 @@ async function prepare(folderPath, data) {
 
   await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_speed_sound.mp4`);
 
-  await runCommand(`ffmpeg -i ${folderPath}/avatar_speed_sound.mp4 -vf "scale=1080:1920" -b:v 2M ${folderPath}/avatar_end.mp4`);
+  await runCommand(`ffmpeg -i ${folderPath}/avatar_speed_sound.mp4 -vf "scale=2160:3840" ${folderPath}/avatar_end.mp4`);
   
   fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
   fs.unlinkSync(`${folderPath}/avatar_speed_sound.mp4`);
@@ -115,7 +121,7 @@ async function prepare(folderPath, data) {
 }
 
 async function generateSubtitles(folderPath) {
-  await runCommand(`whisper_timestamped ${folderPath}/avatar.mp4 --model tiny --output_dir ${folderPath}/words`);
+  await runCommand(`whisper_timestamped ${folderPath}/avatar.mp4 --model small --output_dir ${folderPath}/words`);
   const data = fs.readFileSync(`${folderPath}/words/avatar.mp4.words.json`, 'utf8');
   const parsedData = JSON.parse(data);
   const words = [];
@@ -137,6 +143,110 @@ async function generateSubtitles(folderPath) {
     }
   });
   return `${folderPath}/transcription.json`;
+}
+
+async function generateSubtitlesV2(folderPath, subtitlesUrl) {
+  await download(subtitlesUrl, `${folderPath}/subtitles.srt`);
+  const inputFilePath = path.join(folderPath, 'subtitles.srt');
+  const jsonArray = readFileAndParse(inputFilePath, folderPath);
+  console.error(jsonArray)
+  const words = calculateWordTimings(jsonArray);
+  fs.writeFileSync(`${folderPath}/transcription.json`, JSON.stringify(words), { encoding: 'utf8' });
+}
+
+function calculateWordTimings(subtitles) {
+  const wordTimings = [];
+  console.log(subtitles)
+  subtitles.forEach(subtitle => {
+    const words = subtitle.text.split(' ');
+    const totalDuration = subtitle.end - subtitle.start;
+    const durationPerLetter = totalDuration / subtitle.text.length;
+
+    let currentStart = subtitle.start;
+
+    words.forEach(word => {
+      const wordDuration = word.length * durationPerLetter;
+      const wordEnd = currentStart + wordDuration;
+
+      wordTimings.push({
+        start: currentStart,
+        end: wordEnd,
+        word: word
+      });
+
+      currentStart = wordEnd;
+    });
+  });
+
+  return wordTimings;
+}
+
+function readFileAndParse(filePath, folderPath) {
+    const data = fs.readFileSync(filePath)
+
+    const jsonArray = parseSRT(data);
+
+    return jsonArray;
+}
+
+function parseSRT(data) {
+  const srtRegex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\n|\n*$)/g;
+  const result = [];
+  let match;
+
+  while ((match = srtRegex.exec(data)) !== null) {
+    result.push({
+      start: convertTimeToSeconds(match[2]),
+      end: convertTimeToSeconds(match[3]),
+      text: match[4].replace(/\n/g, ' ')
+    });
+  }
+
+  return result;
+}
+
+function convertTimeToSeconds(time) {
+  const [hours, minutes, seconds] = time.split(':');
+  const [secs, millis] = seconds.split(',');
+  return parseInt(hours, 10) * 3600 + parseInt(minutes, 10) * 60 + parseInt(secs, 10) + parseInt(millis, 10) / 1000;
+}
+
+async function getCorrectedSubtitles(originalText, subtitles) {
+  const prompt = `
+  Given the original text and the subtitles JSON, correct the subtitles to match the original text perfectly. Ensure there are no errors and return only the corrected subtitles in JSON format.
+
+  Original Text:
+  ${originalText}
+
+  Subtitles:
+  ${JSON.stringify(subtitles)}
+
+  Corrected Subtitles (JSON only):
+  `;
+
+  try {
+      const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+          model: 'gpt-4',
+          messages: [
+              { role: 'system', content: 'You are a helpful assistant.' },
+              { role: 'user', content: prompt }
+          ],
+          max_tokens: 4096
+      }, {
+          headers: {
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+              'Content-Type': 'application/json'
+          }
+      });
+
+      const correctedSubtitles = response.data.choices[0].message.content;
+      console.error('Corrected Subtitles:', JSON.stringify(response.data));
+      return correctedSubtitles;
+
+  } catch (error) {
+      console.error('Error while calling ChatGPT API:', error);
+      throw error;
+  }
 }
 
 async function createCover(videoPath, folderPath) {
