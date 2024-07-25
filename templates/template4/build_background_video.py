@@ -251,86 +251,45 @@ def create_background_video():
         for future in futures:
             future.result()
 
-def add_transitions():
-    avatar_clip = VideoFileClip(os.path.join(temp_folder, "11.mp4"))
-    commands = [
-        f'ffmpeg -i 08.mp4 -i 09.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset=2.5,format=yuv420p" 08-09.mp4',
-        f'ffmpeg -i 11.mp4 -i 12.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset={avatar_clip.duration - 0.4},format=yuv420p" 11-12.mp4',
-        f'ffmpeg -i 08-09.mp4 -i 10.mp4 -filter_complex "[0][1]xfade=transition=smoothleft:duration={wipe_left_time/1000}:offset=4.5,format=yuv420p" 08-09-10.mp4',
-    ]
-
-    for command in commands:
-        try:
-            completed_process = subprocess.run(
-                command,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,
-                text=True,
-                cwd=temp_folder
-            )
-            if completed_process.returncode == 0:
-                print("Command output:")
-                print(completed_process.stdout)
-                print("Command executed successfully.")
-            else:
-                print(f"command includes errors:  {completed_process.stderr}")
-        except subprocess.CalledProcessError as e:
-            print(f"An error occurred while executing the command: {e.stderr}")
-
-    commands = [
-        f"ffmpeg-concat -t SimpleZoom -d 450 -o 012.mp4 01.mp4 02.mp4",
-        f"ffmpeg-concat -t wipeLeft -d 450 -o 0123.mp4 012.mp4 03.mp4",
-        f"ffmpeg-concat -t SimpleZoom -d 450 -o 01234.mp4 0123.mp4 04.mp4",
-        f"ffmpeg-concat -t SimpleZoom -d 450 -o 012345.mp4 01234.mp4 05.mp4",
-        f"ffmpeg-concat -t LinearBlur -d 1 -o 0123456.mp4 012345.mp4 06.mp4",
-        f"ffmpeg-concat -t LinearBlur -d 1 -o 01234567.mp4 0123456.mp4 07.mp4",
-        f"ffmpeg-concat -t LinearBlur -d 1 -o 01234568910.mp4 01234567.mp4 08-09-10.mp4",
-        f"ffmpeg-concat -t SimpleZoom -d 450 -o background_video.mp4 01234568910.mp4 11-12.mp4",
-    ]
-
-    for command in commands:
-        try:
-            completed_process = subprocess.run(
-                command,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,
-                text=True,
-                cwd=temp_folder
-            )
-            if completed_process.returncode == 0:
-                print("Command output:")
-                print(completed_process.stdout)
-                print("Command executed successfully.")
-            else:
-                print(f"command includes errors:  {completed_process.stderr}")
-        except subprocess.CalledProcessError as e:
-            print(f"An error occurred while executing the command: {e.stderr}")
-        try:
-            completed_process = subprocess.run(
-                command,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,
-                text=True,
-                cwd=temp_folder
-            )
-            if completed_process.returncode == 0:
-                print("Command output:")
-                print(completed_process.stdout)
-                print("Command executed successfully.")
-            else:
-                print(f"command includes errors:  {completed_process.stderr}")
-        except subprocess.CalledProcessError as e:
-            print(f"An error occurred while executing the command: {e.stderr}")
-
 create_background_video()
 
-add_transitions()
+# ====================== ADD TRANSITION BETWEEN THEM===========================
+video_clip_names = [f"{i+1:02d}.mp4" for i in range(7)]
+video_clip_names.append("08-09-10.mp4")
+video_clip_names.append("11-12.mp4")
+
+#add temp_folder to the video_clip_names
+video_clip_names = [os.path.join(temp_folder, video_clip_name) for video_clip_name in video_clip_names]
+
+background_video = os.path.join(temp_folder, "background_video.mp4")
+
+command = ['ffmpeg-concat', '-T', "./templates/template1/input/transition.json",
+           '-o', background_video, '-c 9'] + video_clip_names
+print(" ".join(command))
+try:
+    completed_process = subprocess.run(
+        " ".join(command),
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+        text=True)
+    if completed_process.returncode == 0:
+        print("Command output:")
+        print(completed_process.stdout)
+        print("Command executed successfully.")
+
+    else:
+        print(f"command includes errors:  {completed_process.stderr}")
+        print(f"command includes errors:  {completed_process}")
+except subprocess.CalledProcessError as e:
+    print(f"Error executing command: {e}")
+
+for file_name in os.listdir(temp_folder):
+    file_path = os.path.join(temp_folder, file_name)
+
+    if file_name != "background_video.mp4":
+        os.remove(file_path)
 
 for file_name in os.listdir(temp_folder):
     file_path = os.path.join(temp_folder, file_name)
