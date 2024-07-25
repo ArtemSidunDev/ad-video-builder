@@ -263,7 +263,7 @@ video_clip_names = [os.path.join(temp_folder, video_clip_name) for video_clip_na
 
 background_video = os.path.join(temp_folder, "background_video.mp4")
 
-command = ['ffmpeg-concat', '-T', "./templates/template1/input/transition.json",
+command = ['ffmpeg-concat', '-T', "./templates/template4/input/transition.json",
            '-o', background_video, '-c 9'] + video_clip_names
 print(" ".join(command))
 try:
