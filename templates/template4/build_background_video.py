@@ -6,7 +6,7 @@ import subprocess
 import json
 import os
 import argparse
-import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
@@ -55,7 +55,7 @@ def write_videoclips(video_clip, idx):
         video_clip.subclip(0, video_clip.duration).write_videofile(
             f"{temp_folder}/{idx:02d}.mp4", fps=video_fps)
 
-async def create_moving_right_clip(image_path, idx):
+def create_moving_right_clip(image_path, idx):
     image = Image.open(image_path)
     image_width, image_height = image.size
     duration = get_durations(idx)
@@ -67,7 +67,7 @@ async def create_moving_right_clip(image_path, idx):
     write_videoclips(video_clip, idx)
     video_clip.close()
 
-async def create_resize_clip(video_path, idx):
+def create_resize_clip(video_path, idx):
     clip = VideoFileClip(video_path).subclip(0, get_durations(idx))
     aspect_ratio = clip.w / clip.h
     dest_ratio = video_dest_width / video_dest_height
@@ -81,7 +81,7 @@ async def create_resize_clip(video_path, idx):
     write_videoclips(cropped_clip, idx)
     clip.close()
 
-async def create_zoom_clip(image_path, idx, zoom_dest):
+def create_zoom_clip(image_path, idx, zoom_dest):
     image = Image.open(image_path).convert("RGB")
     image_width, image_height = image.size
     duration = get_durations(idx)
@@ -113,7 +113,7 @@ async def create_zoom_clip(image_path, idx, zoom_dest):
     write_videoclips(video_clip, idx)
     video_clip.close()
 
-async def create_drop_clip(image_path, back_image, idx):
+def create_drop_clip(image_path, back_image, idx):
     fore_image = Image.open(image_path)
     image_width, image_height = fore_image.size
     duration = 1 / 4
@@ -130,7 +130,7 @@ async def create_drop_clip(image_path, back_image, idx):
     write_videoclips(video_clip, idx)
     video_clip.close()
 
-async def create_pop_clip(image_path, back_image, idx):
+def create_pop_clip(image_path, back_image, idx):
     fore_image = Image.open(image_path).convert("RGB")
     image_width, image_height = fore_image.size
     duration = 1 / 4
@@ -147,7 +147,7 @@ async def create_pop_clip(image_path, back_image, idx):
     write_videoclips(video_clip, idx)
     video_clip.close()
 
-async def create_avatar_clip(video_path, idx):
+def create_avatar_clip(video_path, idx):
     clip = VideoFileClip(video_path).subclip(0, get_durations(idx))
     aspect_ratio = clip.w / clip.h
     dest_ratio = video_dest_width / video_dest_height
@@ -161,7 +161,7 @@ async def create_avatar_clip(video_path, idx):
     write_videoclips(cropped_clip, idx)
     clip.close()
 
-async def create_moving_and_zoom_clip(image_path, idx):
+def create_moving_and_zoom_clip(image_path, idx):
     def moving_and_zoom_frame(t):
         new_left = int(image_width / 4) - int((image_width - video_dest_width) * t / duration)
 
@@ -191,7 +191,7 @@ async def create_moving_and_zoom_clip(image_path, idx):
     write_videoclips(video_clip, idx)
     video_clip.close()
 
-async def create_resize_clip(video_path, idx):
+def create_resize_clip(video_path, idx):
     clip = VideoFileClip(video_path).subclip(0, get_durations(idx))
     aspect_ratio = clip.w / clip.h
     dest_ratio = video_dest_width / video_dest_height
@@ -215,7 +215,7 @@ async def create_resize_clip(video_path, idx):
     write_videoclips(cropped_clip, idx)
     clip.close()
 
-async def create_blur_clip(video_path, idx):
+def create_blur_clip(video_path, idx):
     def blur_frame(frame):
         return cv2.GaussianBlur(frame, (51, 51), 10)
     clip = VideoFileClip(video_path).subclip(0, get_durations(idx))
@@ -232,23 +232,24 @@ async def create_blur_clip(video_path, idx):
     write_videoclips(background_clip, idx)
     clip.close()
 
-async def create_background_video():
-    task1 = create_moving_right_clip(os.path.join(folder_path, "1.png"), 1)
-    task2 = create_moving_right_clip(os.path.join(folder_path, "2.png"), 2)
-    task3 = create_resize_clip(os.path.join(folder_path, "ss.mp4"), 3)
-    task4 = create_moving_right_clip(os.path.join(folder_path, "3.png"), 4)
-    task5 = create_zoom_clip(os.path.join(folder_path, "4.png"), 5, 0.7)
-    task6 = create_drop_clip(os.path.join(folder_path, "5.png"), Image.open(os.path.join(folder_path, "4.png")), 6)
-    task7 = create_pop_clip(os.path.join(folder_path, "6.png"), Image.open(os.path.join(folder_path, "5.png")), 7)
-    task8 = create_avatar_clip(os.path.join(folder_path, "bg_avatar.mp4"), 8)
-    task9 = create_moving_and_zoom_clip(os.path.join(folder_path, "7.png"), 9)
-    task10 = create_resize_clip(os.path.join(folder_path, "ss.mp4"), 10)
-    task11 = create_avatar_clip(os.path.join(folder_path, "bg_avatar.mp4"), 11)
-    task12 = create_blur_clip(os.path.join(folder_path, "ss.mp4"), 12)
-
-    await asyncio.gather(task1, task2, task3, task4, task5, task6, task7, task8, task9, task10, task11, task12)
-
-asyncio.run(create_background_video())
+def create_background_video():
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        futures.append(executor.submit(create_moving_right_clip, os.path.join(folder_path, "1.png"), 1))
+        futures.append(executor.submit(create_moving_right_clip, os.path.join(folder_path, "2.png"), 2))
+        futures.append(executor.submit(create_resize_clip ,os.path.join(folder_path, "ss.mp4"), 3))
+        futures.append(executor.submit(create_moving_right_clip, os.path.join(folder_path, "3.png"), 4))
+        futures.append(executor.submit(create_zoom_clip, os.path.join(folder_path, "4.png"), 5, 0.7))
+        futures.append(executor.submit(create_drop_clip, os.path.join(folder_path, "5.png"), Image.open(os.path.join(folder_path, "4.png")), 6))
+        futures.append(executor.submit(create_pop_clip, os.path.join(folder_path, "6.png"), Image.open(os.path.join(folder_path, "5.png")), 7))
+        futures.append(executor.submit(create_avatar_clip, os.path.join(folder_path, "bg_avatar.mp4"), 8))
+        futures.append(executor.submit(create_moving_and_zoom_clip, os.path.join(folder_path, "7.png"), 9))
+        futures.append(executor.submit(create_resize_clip, os.path.join(folder_path, "ss.mp4"), 10))
+        futures.append(executor.submit(create_avatar_clip, os.path.join(folder_path, "bg_avatar.mp4"), 11))
+        futures.append(executor.submit(create_blur_clip, os.path.join(folder_path, "ss.mp4"), 12))
+        
+        for future in futures:
+            future.result()
 
 def add_transitions():
     avatar_clip = VideoFileClip(os.path.join(temp_folder, "11.mp4"))
@@ -326,6 +327,8 @@ def add_transitions():
                 print(f"command includes errors:  {completed_process.stderr}")
         except subprocess.CalledProcessError as e:
             print(f"An error occurred while executing the command: {e.stderr}")
+
+create_background_video()
 
 add_transitions()
 
