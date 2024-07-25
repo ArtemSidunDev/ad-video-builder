@@ -24,6 +24,8 @@ async function handle(templateName, data) {
     errorCallBackUrl,
     productUrl
   } = data;
+  console.time('BUILD_TIME');
+  
   const folderPath = `./data/${adVideoId}`;
   if (fs.existsSync(folderPath)) {
     fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
@@ -44,7 +46,9 @@ async function handle(templateName, data) {
     const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
     
     const fileName = uuidv4();
-
+    
+    console.timeEnd('BUILD_TIME');
+    
     const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${fileName}.mp4`);
     const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${fileName}_cover.png`, 'image/png');
 

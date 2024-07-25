@@ -1,0 +1,48 @@
+[
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    },
+    {
+        "name": "rotate_scale_fade",
+        "duration": 450,
+        "params": { "scale": 1.5 }
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 450
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "LinearBlur",
+        "duration": 0
+    },
+    {
+        "name": "WipeLeft",
+        "duration": 0
+    },
+    {
+        "name": "WipeLeft",
+        "duration": 0
+    },
+    {
+        "name": "rotate_scale_fade",
+        "duration": 450,
+        "params": { "scale": 1.5 }
+    },
+    {
+        "name": "WipeLeft",
+        "duration": 0
+    }
+]
