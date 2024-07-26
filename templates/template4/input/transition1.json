@@ -4,13 +4,22 @@
         "duration": 400
     },
     {
+        "name": "wipeUp",
+        "duration": 400,
+        "params": { "scale": 1.5 }
+    },
+    {
         "name": "Directional",
         "duration": 0
     },
     {
         "name": "SimpleZoom",
         "duration": 600,
-        "params": { "zoom_quickness": 0.4 }
+        "params": { "zoom_quickness": 5 }
+    },
+    {
+        "name": "WipeLeft",
+        "duration": 400
     },
     {
         "name": "LinearBlur",
@@ -19,10 +28,15 @@
     {
         "name": "SimpleZoom",
         "duration": 600,
-        "params": { "zoom_quickness": 0.4 }
+        "params": { "zoom_quickness": 5 }
     },
     {
         "name": "rotate_scale_fade",
+        "duration": 400,
+        "params": { "scale": 1.5 }
+    },
+    {
+        "name": "WipeLeft",
         "duration": 400,
         "params": { "scale": 1.5 }
     }
