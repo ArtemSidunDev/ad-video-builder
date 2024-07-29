@@ -21,8 +21,7 @@ async function handle(templateName, data) {
     userId,
     callBackUrl,
     errorCallBackUrl,
-    productUrl,
-    scaleAfter,
+    productUrl
   } = data;
   console.time('BUILD_TIME');
   
@@ -43,16 +42,18 @@ async function handle(templateName, data) {
     ]);
 
     await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
-    const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
     
     const fileName = uuidv4();
-    if(scaleAfter) {
-      await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=2160:3840" ${folderPath}/output_scale_command.mp4`);
-      fs.unlinkSync(`${folderPath}/output.mp4`);
-      fs.renameSync(`${folderPath}/output_scale_command.mp4`, `${folderPath}/output.mp4`);
-    }
+    
     await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=2160:3840" ${folderPath}/output_scale_command.mp4`);
+    
+    fs.unlinkSync(`${folderPath}/output.mp4`);
+    fs.renameSync(`${folderPath}/output_scale_command.mp4`, `${folderPath}/output.mp4`);
+    
+    const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
+    
     console.timeEnd('BUILD_TIME');
+
     const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${fileName}.mp4`);
     const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${fileName}_cover.png`, 'image/png');
 
@@ -70,12 +71,12 @@ async function handle(templateName, data) {
       status: 'error'
     })
   } finally {
-    // fs.rm(folderPath, { recursive: true }, (err) => {
-    //   if (err) {
-    //     console.error(err);
-    //     return;
-    //   }
-    // });
+    fs.rm(folderPath, { recursive: true }, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
   }
 }
 
@@ -84,10 +85,7 @@ async function prepare(folderPath, data) {
     media,
     avatarUrl,
     actionUrl,
-    musicUrl,
-    width = 2160,
-    height = 3840,
-    scaleAfter = false
+    musicUrl
   } = data;
   
   const videos = media.filter(mediaItem => mediaItem.type === 'video');
@@ -107,7 +105,7 @@ async function prepare(folderPath, data) {
       await download(mediaItem.url, mediaPathOrg);
   
       await sharp(mediaPathOrg)
-      .resize(width * 2)
+      .resize(2432)
       .jpeg({ quality: 100 })
       .toFile(mediaPath);
       fs.unlinkSync(mediaPathOrg);
@@ -116,15 +114,10 @@ async function prepare(folderPath, data) {
   const acceleration= await getAcceleration(`${folderPath}/avatar.mp4`, 27);
 
   await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4  -vf "setpts=${1/acceleration}*PTS" -filter:a "atempo=${acceleration}" -q:v 3 -q:a 3 ${folderPath}/avatar_speed.mp4`);
+  await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
 
-  if(!scaleAfter) {
-    await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_speed_sound.mp4`);
-    await runCommand(`ffmpeg -i ${folderPath}/avatar_speed_sound.mp4 -vf "scale=${width}:${height}" ${folderPath}/avatar_end.mp4`);
-    fs.unlinkSync(`${folderPath}/avatar_speed_sound.mp4`);
-  } else {
-    await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
-  }
   fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
+  
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
   fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
 

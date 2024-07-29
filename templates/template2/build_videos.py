@@ -21,9 +21,9 @@ folder_path = args.folderPath
 
 # Load your image using PIL
 video_fps = 30
-video_dest_width = 2160
-video_dest_height = 3840
-wipe_left_time = 800
+video_dest_width = 1216
+video_dest_height = 2160
+wipe_left_time = 400
 
 speed_factor = 1.04
 

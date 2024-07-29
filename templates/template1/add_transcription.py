@@ -17,14 +17,14 @@ folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
 FONT = "./templates/template1/input/ProximaNova-Black.ttf"
-FONT_SIZE = 160
+FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#CEA636"
-FONT_OUTLINE_WIDTH = 8
+FONT_OUTLINE_WIDTH = 4
 
-video_dest_width = 2160
-video_dest_height = 3840
+video_dest_width = 1216
+video_dest_height = 2160
 
 foreground_audio = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).audio
 

@@ -17,13 +17,13 @@ folder_path = args.folderPath
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
 FONT = "./templates/template3/input/ProximaNova-Black.ttf"
-FONT_SIZE = 160
+FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#FE0000"
-FONT_OUTLINE_WIDTH = 8
-video_dest_width = 2160
-video_dest_height = 3840
+FONT_OUTLINE_WIDTH = 4
+video_dest_width = 1216
+video_dest_height = 2160
 
 foreground_audio = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).audio
 
@@ -212,8 +212,15 @@ def create_caption(
             [0, 3.5],
             [14.9, 20]
         ]
+
+        move_text_down_time_ranges = [
+            [3.5, 10.9],
+            [24.0, foreground_audio.duration]
+        ]
         if is_in_range(textJSON['start'], move_text_up_time_ranges):
             start_y_pos = frame_height * 0.30
+        if is_in_range(textJSON['start'], move_text_down_time_ranges):
+            start_y_pos = frame_height * 0.80
         word_clip = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH).set_start( textJSON['start']).set_duration( full_duration)
         word_clip = word_clip.set_position((centered_x_pos, start_y_pos + word_info['y_pos'] * 0.8))
         word_clips.append(word_clip)
@@ -269,8 +276,8 @@ final_video = final_video.set_audio(composite_audio_clip)
 # Save the final clip as a video file with the audio included
 final_video.subclip(0, input_video_duration).write_videofile(os.path.join(folder_path, "output.mp4"), temp_audiofile=f"{temp_folder}/output.aac", remove_temp=True, codec="libx264", audio_codec="aac", fps=30)
 
-try:
-    shutil.rmtree(temp_folder)
-    print(f"Folder '{temp_folder}' deleted successfully.")
-except OSError as e:
-    print(f"Error: {e}")
+# try:
+#     shutil.rmtree(temp_folder)
+#     print(f"Folder '{temp_folder}' deleted successfully.")
+# except OSError as e:
+#     print(f"Error: {e}")
