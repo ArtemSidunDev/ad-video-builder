@@ -821,8 +821,8 @@ processed_clip = background_clip.subclip(15, 21).fl(lambda gf, t: add_foreground
 final_clip = concatenate_videoclips([background_clip.subclip(0, 15), processed_clip, background_clip.subclip(21, background_clip.duration)])
 final_clip.write_videofile( f"{temp_folder}/overlapped_video.mp4", codec="libx264", fps=video_fps)
 
-# for file_name in os.listdir(temp_folder):
-#     file_path = os.path.join(temp_folder, file_name)
+for file_name in os.listdir(temp_folder):
+    file_path = os.path.join(temp_folder, file_name)
 
-#     if file_name != "overlapped_video.mp4":
-#         os.remove(file_path)
+    if file_name != "overlapped_video.mp4":
+        os.remove(file_path)

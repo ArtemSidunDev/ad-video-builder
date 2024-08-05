@@ -276,8 +276,8 @@ final_video = final_video.set_audio(composite_audio_clip)
 # Save the final clip as a video file with the audio included
 final_video.subclip(0, input_video_duration).write_videofile(os.path.join(folder_path, "output.mp4"), temp_audiofile=f"{temp_folder}/output.aac", remove_temp=True, codec="libx264", audio_codec="aac", fps=30)
 
-# try:
-#     shutil.rmtree(temp_folder)
-#     print(f"Folder '{temp_folder}' deleted successfully.")
-# except OSError as e:
-#     print(f"Error: {e}")
+try:
+    shutil.rmtree(temp_folder)
+    print(f"Folder '{temp_folder}' deleted successfully.")
+except OSError as e:
+    print(f"Error: {e}")

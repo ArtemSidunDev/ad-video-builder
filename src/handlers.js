@@ -5,6 +5,9 @@ const AWS = require('aws-sdk');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 const { run: runSiteScroll } = require('./site_scroll.js');
+const { run: generateSubtitlesGPT } = require('./subtitles_gpt.js');
+const { run: generateSubtitlesSRT } = require('./subtitles_srt.js');
+const { run: generateSubtitlesAzure } = require('./subtitles_azure.js');
 
 const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_S3_AD_VIDEOS_BUCKET } = process.env;
 
@@ -71,12 +74,12 @@ async function handle(templateName, data) {
       status: 'error'
     })
   } finally {
-    fs.rm(folderPath, { recursive: true }, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
+    // fs.rm(folderPath, { recursive: true }, (err) => {
+    //   if (err) {
+    //     console.error(err);
+    //     return;
+    //   }
+    // });
   }
 }
 
@@ -85,9 +88,10 @@ async function prepare(folderPath, data) {
     media,
     avatarUrl,
     actionUrl,
-    musicUrl
+    musicUrl,
+    script
   } = data;
-  
+  // const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
   const videos = media.filter(mediaItem => mediaItem.type === 'video');
   const images = media.filter(mediaItem => mediaItem.type === 'image');
   
@@ -95,6 +99,7 @@ async function prepare(folderPath, data) {
     download(avatarUrl, `${folderPath}/avatar.mp4`),
     download(actionUrl, `${folderPath}/action.mp4`),
     download(musicUrl, `${folderPath}/background_audio.mp3`),
+    // download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
     videos.map(async (mediaItem, index) => {
       const mediaPath = `${folderPath}/${index+1}.mp4`;
       await download(mediaItem.url, mediaPath);
@@ -122,8 +127,21 @@ async function prepare(folderPath, data) {
   fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
 
   await runCommand(`./templates/common/run.sh ${folderPath}`);
+  
+  await generateSubtitlesAzure({
+    folderPath,
+    script
+  });
 
-  await generateSubtitles(folderPath);
+  // await generateSubtitlesGPT({
+  //   folderPath,
+  //   script
+  // })
+
+  // await generateSubtitlesSRT({
+  //   folderPath,
+  //   acceleration
+  // })
 }
 
 async function generateSubtitles(folderPath) {
