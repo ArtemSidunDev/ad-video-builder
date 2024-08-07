@@ -104,7 +104,7 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
     if(siteHeight > 10000) {
         page.setViewport({
             width,
-            height: 932 * 7,
+            height: height * 7,
             deviceScaleFactor,
         });
         await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
@@ -123,7 +123,18 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
         screenshots.push(`${folderPath}/screenshot${i}.png`);
         i++;
     }
+
+    const dataImage = await sharp(`${folderPath}/screenshot${i-1}.png`).metadata();
     
+    if(dataImage.height > 10000) {
+        await sharp(`${folderPath}/screenshot${i-1}.png`)
+        .resize(width, height * 7, {
+            position: 'bottom'
+        })
+        .toFile(`${folderPath}/screenshot${i}.png`);
+        i++;
+    }
+
     await sharp(`${folderPath}/screenshot${i-1}.png`)
     .resize(2160)
     .png({
