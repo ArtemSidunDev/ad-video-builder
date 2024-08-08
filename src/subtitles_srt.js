@@ -49,7 +49,7 @@ function calculateWordTimings(subtitles) {
       const wordTiming = {
         start: currentStart,
         end: wordEnd,
-        word
+        word: word.replace(',dot,', '.')
       };
 
       currentStart = wordEnd;

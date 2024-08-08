@@ -74,12 +74,12 @@ async function handle(templateName, data) {
       status: 'error'
     })
   } finally {
-    // fs.rm(folderPath, { recursive: true }, (err) => {
-    //   if (err) {
-    //     console.error(err);
-    //     return;
-    //   }
-    // });
+    fs.rm(folderPath, { recursive: true }, (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
   }
 }
 
@@ -91,7 +91,7 @@ async function prepare(folderPath, data) {
     musicUrl,
     script
   } = data;
-  // const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
+  const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
   const videos = media.filter(mediaItem => mediaItem.type === 'video');
   const images = media.filter(mediaItem => mediaItem.type === 'image');
   
@@ -99,7 +99,7 @@ async function prepare(folderPath, data) {
     download(avatarUrl, `${folderPath}/avatar.mp4`),
     download(actionUrl, `${folderPath}/action.mp4`),
     download(musicUrl, `${folderPath}/background_audio.mp3`),
-    // download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
+    download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
     videos.map(async (mediaItem, index) => {
       const mediaPath = `${folderPath}/${index+1}.mp4`;
       await download(mediaItem.url, mediaPath);
@@ -128,20 +128,20 @@ async function prepare(folderPath, data) {
 
   await runCommand(`./templates/common/run.sh ${folderPath}`);
   
-  await generateSubtitlesAzure({
-    folderPath,
-    script
-  });
+  // await generateSubtitlesAzure({
+  //   folderPath,
+  //   script
+  // });
 
   // await generateSubtitlesGPT({
   //   folderPath,
   //   script
   // })
 
-  // await generateSubtitlesSRT({
-  //   folderPath,
-  //   acceleration
-  // })
+  await generateSubtitlesSRT({
+    folderPath,
+    acceleration
+  })
 }
 
 async function generateSubtitles(folderPath) {
