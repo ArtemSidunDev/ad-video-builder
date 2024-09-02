@@ -24,7 +24,8 @@ async function handle(templateName, data) {
     userId,
     callBackUrl,
     errorCallBackUrl,
-    productUrl
+    productUrl,
+    subtitleTemplate = ''
   } = data;
   console.time('BUILD_TIME');
   
@@ -44,7 +45,7 @@ async function handle(templateName, data) {
       prepare(folderPath, data)
     ]);
 
-    await runCommand(`./templates/${templateName}/run.sh ${folderPath}`);
+    await runCommand(`./templates/${templateName}/run.sh ${folderPath} ${subtitleTemplate}`);
     
     const fileName = uuidv4();
     
