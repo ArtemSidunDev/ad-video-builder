@@ -10,11 +10,12 @@ XVFB_PID=$!
 export DISPLAY=:$DISPLAY_NUM
 
 folder_path=$1
+subtitle_template=$2
 
 sleep 2
 
-python3 ./templates/template2/build_videos.py $folder_path
-python3 ./templates/template2/add_transcription.py $folder_path
+python3 ./templates/template2/build_videos.py $folder_path $subtitle_template
+python3 ./templates/template2/add_transcription.py $folder_path $subtitle_template
 
 if ps -p $XVFB_PID > /dev/null
 

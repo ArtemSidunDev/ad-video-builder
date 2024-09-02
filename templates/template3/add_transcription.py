@@ -11,9 +11,12 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
+parser.add_argument('subtitleTemplate', type=str, nargs='?', default=None, help='Select the subtitle template')
+
 args = parser.parse_args()
 
 folder_path = args.folderPath
+subtile_template = args.subtitleTemplate
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
 FONT = "./templates/template3/input/ProximaNova-Black.ttf"
@@ -22,6 +25,25 @@ FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#FE0000"
 FONT_OUTLINE_WIDTH = 4
+
+match subtile_template:
+    case "Yellow":
+        FONT_COLOR = "#FFFF00"
+        FONT_OUTLINE_COLOR = "#000000"
+        FONT_HIGHLIGHT_COLOR = "#FFA500"
+    case "White":
+        FONT_COLOR = "#00FFFF"
+        FONT_OUTLINE_COLOR = "#00264D"
+        FONT_HIGHLIGHT_COLOR = "#004C99"
+    case "Black":
+        FONT_COLOR = "#A4D65E"
+        FONT_OUTLINE_COLOR = "#004D00"
+        FONT_HIGHLIGHT_COLOR = "#CCFF99"
+    case _:
+        FONT_COLOR = "#FFFFFF"
+        FONT_OUTLINE_COLOR = "#000000"
+        FONT_HIGHLIGHT_COLOR = "#CEA636"
+
 video_dest_width = 1216
 video_dest_height = 2160
 

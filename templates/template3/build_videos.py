@@ -15,6 +15,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
+parser.add_argument('subtitleTemplate', type=str, nargs='?', default=None, help='Select the subtitle template')
 args = parser.parse_args()
 
 folder_path = args.folderPath
