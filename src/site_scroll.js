@@ -2,6 +2,7 @@ const sharp = require('sharp');
 const fs = require('fs/promises');
 const { exec } = require('child_process');
 const { launch } = require('puppeteer');
+const UserAgent = require('user-agents');
 
 const width = 430;
 const height = 932;
@@ -68,91 +69,95 @@ const autoScroll = async (page) => {
 
 const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
     console.log('Running site scroll');
-    const browser = await launch({args: ['--no-sandbox']});
+    const browser = await launch({args: ['--no-sandbox'], headless: false});
     const page = await browser.newPage();
-
-    await page.emulate({
-        viewport: {
-            width,
-            height,
-            deviceScaleFactor,
-            isMobile:    true,
-            hasTouch:    true,
-            isLandscape: false,
-        },
-        userAgent: 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Mobile Safari/537.36'
-    });
-
-    await page.goto(siteUrl, {timeout: 1000 * 60 * 5, waitUntil: 'networkidle2'});
-    
-    const screenshots = [];
-    
-    await delay(1000);
-    
-    await page.evaluate(() => {
-        const element = document.querySelector('a[href="https://zeely.app?utm_source=link"]');
-        if (element) {
-            element.remove();
-        }
-    });
-
-    const siteHeight = await autoScroll(page);
-    await delay(1000);
-    let i = 0;
-    console.log('Taking screenshots');
-    
-    if(siteHeight > 10000) {
-        page.setViewport({
-            width,
-            height: height * 7,
-            deviceScaleFactor,
+    try {
+        const userAgent = new UserAgent();
+        await page.emulate({
+            viewport: {
+                width,
+                height,
+                deviceScaleFactor,
+                isMobile:    true,
+                hasTouch:    true,
+                isLandscape: false,
+            },
+            userAgent: userAgent.toString(),
         });
-        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
-        screenshots.push(`${folderPath}/screenshot${i}.png`);
-        i++;
-        await delay(1000);
-        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
-        screenshots.push(`${folderPath}/screenshot${i}.png`);
-        i++;
-    } else {
-        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
-        screenshots.push(`${folderPath}/screenshot${i}.png`);
-        i++;
-        await delay(1000);
-        await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
-        screenshots.push(`${folderPath}/screenshot${i}.png`);
-        i++;
-    }
-
-    const dataImage = await sharp(`${folderPath}/screenshot${i-1}.png`).metadata();
     
-    if(dataImage.height > 10000) {
+        await page.goto(siteUrl, {timeout: 1000 * 60 * 5, waitUntil: 'domcontentloaded'});
+        
+        const screenshots = [];
+        
+        await delay(1000);
+        
+        await page.evaluate(() => {
+            const element = document.querySelector('a[href="https://zeely.app?utm_source=link"]');
+            if (element) {
+                element.remove();
+            }
+        });
+    
+        const siteHeight = await autoScroll(page);
+        await delay(1000);
+        let i = 0;
+        console.log('Taking screenshots');
+        
+        if(siteHeight > 10000) {
+            page.setViewport({
+                width,
+                height: height * 7,
+                deviceScaleFactor,
+            });
+            await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
+            screenshots.push(`${folderPath}/screenshot${i}.png`);
+            i++;
+            await delay(1000);
+            await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, type: 'jpeg', quality: 100});
+            screenshots.push(`${folderPath}/screenshot${i}.png`);
+            i++;
+        } else {
+            await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
+            screenshots.push(`${folderPath}/screenshot${i}.png`);
+            i++;
+            await delay(1000);
+            await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
+            screenshots.push(`${folderPath}/screenshot${i}.png`);
+            i++;
+        }
+    
+        const dataImage = await sharp(`${folderPath}/screenshot${i-1}.png`).metadata();
+        
+        if(dataImage.height > 10000) {
+            await sharp(`${folderPath}/screenshot${i-1}.png`)
+            .resize(width, height * 7, {
+                position: 'bottom'
+            })
+            .toFile(`${folderPath}/screenshot${i}.png`);
+            i++;
+        }
+    
         await sharp(`${folderPath}/screenshot${i-1}.png`)
-        .resize(width, height * 7, {
-            position: 'bottom'
+        .resize(2160)
+        .png({
+            quality:           100,
+            compressionLevel:  0,
+            adaptiveFiltering: true,
+            effort:            6,
         })
         .toFile(`${folderPath}/screenshot${i}.png`);
-        i++;
+        
+        screenshots.push(`${folderPath}/screenshot${i}.png`);
+        console.log('Screenshots taken');
+        await browser.close();
+        console.log('Site scroll screenshots created');
+        await createVideo(screenshots, siteScrollResultVideoPath, duration);
+        console.log('Site scroll video created');
+        await cleanup(screenshots);
+        console.log('Site scroll finished');
+    } catch (error) {
+        console.error('Error:', error);
     }
-
-    await sharp(`${folderPath}/screenshot${i-1}.png`)
-    .resize(2160)
-    .png({
-        quality:           100,
-        compressionLevel:  0,
-        adaptiveFiltering: true,
-        effort:            6,
-    })
-    .toFile(`${folderPath}/screenshot${i}.png`);
-    
-    screenshots.push(`${folderPath}/screenshot${i}.png`);
-    console.log('Screenshots taken');
-    await browser.close();
-    console.log('Site scroll screenshots created');
-    await createVideo(screenshots, siteScrollResultVideoPath, duration);
-    console.log('Site scroll video created');
-    await cleanup(screenshots);
-    console.log('Site scroll finished');
 };
 
 module.exports = {
