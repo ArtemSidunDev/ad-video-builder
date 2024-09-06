@@ -101,6 +101,7 @@ async function prepare(folderPath, data) {
     download(actionUrl, `${folderPath}/action.mp4`),
     download(musicUrl, `${folderPath}/background_audio.mp3`),
     download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
+    download(avatarSettings.bgImageUrl, `${folderPath}/background_image.jpg`),
     videos.map(async (mediaItem, index) => {
       const mediaPath = `${folderPath}/${index+1}.mp4`;
       await download(mediaItem.url, mediaPath);
