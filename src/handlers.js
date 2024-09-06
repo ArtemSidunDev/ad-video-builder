@@ -90,7 +90,7 @@ async function prepare(folderPath, data) {
     avatarUrl,
     actionUrl,
     musicUrl,
-    script
+    avatarSettings
   } = data;
   const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
   const videos = media.filter(mediaItem => mediaItem.type === 'video');
@@ -117,12 +117,17 @@ async function prepare(folderPath, data) {
       fs.unlinkSync(mediaPathOrg);
     })
   ]);
-  const acceleration= await getAcceleration(`${folderPath}/avatar.mp4`, 27);
 
-  await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4  -vf "setpts=${1/acceleration}*PTS" -filter:a "atempo=${acceleration}" -q:v 3 -q:a 3 ${folderPath}/avatar_speed.mp4`);
-  await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
+  let acceleration= 1
 
-  fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
+  if(avatarSettings && avatarSettings.accelerationEnabled) {
+    acceleration= await getAcceleration(`${folderPath}/avatar.mp4`, 27);
+    await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4  -vf "setpts=${1/acceleration}*PTS" -filter:a "atempo=${acceleration}" -q:v 3 -q:a 3 ${folderPath}/avatar_speed.mp4`);
+    await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
+    fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
+  } else {
+    await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
+  }
   
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
   fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
