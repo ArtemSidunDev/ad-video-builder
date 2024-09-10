@@ -10,7 +10,10 @@ const deviceScaleFactor = 1;
 
 const cleanup = async (screenshots) => {
     for (const file of screenshots) {
-        await fs.unlink(file);
+        const resultFs = await fs.access(file).catch(() => null);
+        if(resultFs) {
+            await fs.unlink(file);
+        }
     }
 };
 
@@ -67,12 +70,15 @@ const autoScroll = async (page) => {
     return attempts * scrollStep;
 };
 
-const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
-    console.log('Running site scroll');
+const startSiteProcessing = async (siteUrl, folderPath) => {
+    
     const browser = await launch({args: ['--no-sandbox']});
-    const page = await browser.newPage();
+    
     try {
+        const page = await browser.newPage();
+        
         const userAgent = new UserAgent();
+        
         await page.emulate({
             viewport: {
                 width,
@@ -83,26 +89,24 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
                 isLandscape: false,
             },
             userAgent: userAgent.toString(),
-        });
-    
+        }); 
         await page.goto(siteUrl, {timeout: 1000 * 60 * 5, waitUntil: 'domcontentloaded'});
-        
+
         const screenshots = [];
-        
+
         await delay(1000);
-        
+
         await page.evaluate(() => {
             const element = document.querySelector('a[href="https://zeely.app?utm_source=link"]');
             if (element) {
                 element.remove();
             }
-        });
-    
+        }); 
         const siteHeight = await autoScroll(page);
         await delay(1000);
         let i = 0;
         console.log('Taking screenshots');
-        
+
         if(siteHeight > 10000) {
             page.setViewport({
                 width,
@@ -124,10 +128,9 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
             await page.screenshot({ path: `${folderPath}/screenshot${i}.png`, fullPage: true, type: 'jpeg', quality: 100 });
             screenshots.push(`${folderPath}/screenshot${i}.png`);
             i++;
-        }
-    
+        }   
         const dataImage = await sharp(`${folderPath}/screenshot${i-1}.png`).metadata();
-        
+
         if(dataImage.height > 10000) {
             await sharp(`${folderPath}/screenshot${i-1}.png`)
             .resize(width, height * 7, {
@@ -135,8 +138,7 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
             })
             .toFile(`${folderPath}/screenshot${i}.png`);
             i++;
-        }
-    
+        }   
         await sharp(`${folderPath}/screenshot${i-1}.png`)
         .resize(2160)
         .png({
@@ -145,19 +147,58 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => 
             adaptiveFiltering: true,
             effort:            6,
         })
-        .toFile(`${folderPath}/screenshot${i}.png`);
-        
+        .toFile(`${folderPath}/screenshot${i}.png`);    
         screenshots.push(`${folderPath}/screenshot${i}.png`);
+        
         console.log('Screenshots taken');
+        
         await browser.close();
-        console.log('Site scroll screenshots created');
-        await createVideo(screenshots, siteScrollResultVideoPath, duration);
-        console.log('Site scroll video created');
-        await cleanup(screenshots);
-        console.log('Site scroll finished');
+        
+        return screenshots
+
     } catch (error) {
-        console.error('Error:', error);
+        console.error(error);
+        browser.close();
+        return [];
     }
+};
+
+const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
+    console.log('Running site scroll');
+    const screenshots = await startSiteProcessing(siteUrl, folderPath);
+    console.log('Site scroll screenshots created');
+    if(screenshots.length === 0) {
+        const image1 = `${folderPath}/1.png`;
+        const image2 = `${folderPath}/2.png`;
+        const image3 = `${folderPath}/3.png`;
+
+        const metadata1 = await sharp(image1).metadata()
+        const metadata2 = await sharp(image2).metadata()
+        const metadata3 = await sharp(image3).metadata()
+        
+        await sharp({
+            create: {
+              width: metadata1.width,
+              height: metadata1.height + metadata2.height + metadata3.height,
+              channels: 4,
+              background: { r: 255, g: 255, b: 255, alpha: 0 },
+            },
+          })
+          .composite([
+            { input: image1, top: 0, left: 0 },
+            { input: image2, top: metadata1.height, left: 0 },
+            { input: image3, top: metadata1.height + metadata2.height, left: 0 },
+          ])
+          .toFile(`${folderPath}/screenshots1.png`)
+
+        screenshots.push(`${folderPath}/screenshots1.png`);
+        screenshots.push(`${folderPath}/screenshots1.png`);
+        screenshots.push(`${folderPath}/screenshots1.png`);
+    }
+    await createVideo(screenshots, siteScrollResultVideoPath, duration);
+    console.log('Site scroll video created');
+    await cleanup(screenshots);
+    console.log('Site scroll finished');
 };
 
 module.exports = {
