@@ -1,5 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
+const he = require('he');
 
 function applyAcceleration(timeStr, acceleration) {
   const [hours, minutes, seconds, milliseconds] = timeStr.split(/[:,]/).map(Number);
@@ -49,7 +50,7 @@ function calculateWordTimings(subtitles) {
       const wordTiming = {
         start: currentStart,
         end: wordEnd,
-        word: word.replace(',dot,', '.')
+        word: he.decode(word.replace(',dot,', '.'))
       };
 
       currentStart = wordEnd;
