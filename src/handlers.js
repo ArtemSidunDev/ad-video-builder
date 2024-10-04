@@ -9,7 +9,12 @@ const { run: generateSubtitlesGPT } = require('./subtitles_gpt.js');
 const { run: generateSubtitlesSRT } = require('./subtitles_srt.js');
 const { run: generateSubtitlesAzure } = require('./subtitles_azure.js');
 
-const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_S3_AD_VIDEOS_BUCKET } = process.env;
+const { 
+  AWS_KEY_ID, 
+  AWS_SECRET_KEY, 
+  AWS_S3_AD_VIDEOS_BUCKET, 
+  AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL 
+} = process.env;
 
 AWS.config.update({
   accessKeyId: AWS_KEY_ID,
@@ -58,8 +63,17 @@ async function handle(templateName, data) {
     
     console.timeEnd('BUILD_TIME');
 
-    const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${fileName}.mp4`);
-    const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${fileName}_cover.png`, 'image/png');
+    const videoFilePath = `${userId}/${adVideoId}/${fileName}.mp4`
+    const coverVideoFilePath = `${userId}/${adVideoId}/${fileName}.mp4`
+    
+    await uploadToS3(`${folderPath}/output.mp4`, videoFilePath);
+    await uploadToS3(coverPath, coverVideoFilePath, 'image/png');
+
+    const url = `${AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL}/${videoFilePath}`;
+    const coverUrl = `${AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL}/${coverVideoFilePath}`;
+
+    console.log('Video URL:', url);
+    console.log('Cover URL:', coverUrl);
 
     await axios.patch(callBackUrl, {
       url,
