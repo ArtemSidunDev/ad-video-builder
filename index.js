@@ -3,8 +3,11 @@ const dotenv = require('dotenv');
 dotenv.config('./.env');
 
 const handler = require('./src/handlers');
+const awsSqs = require('./src/aws_sqs');
 const express = require('express');
 const app = express();
+
+awsSqs.pollMessages();
 
 const port = process.env.PORT
 
