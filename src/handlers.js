@@ -64,7 +64,7 @@ async function handle(templateName, data) {
     console.timeEnd('BUILD_TIME');
 
     const videoFilePath = `${userId}/${adVideoId}/${fileName}.mp4`
-    const coverVideoFilePath = `${userId}/${adVideoId}/${fileName}_cover.mp4`
+    const coverVideoFilePath = `${userId}/${adVideoId}/${fileName}_cover.png`
     
     await uploadToS3(`${folderPath}/output.mp4`, videoFilePath);
     await uploadToS3(coverPath, coverVideoFilePath, 'image/png');
