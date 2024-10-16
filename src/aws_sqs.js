@@ -13,7 +13,7 @@ const sqs = new AWS.SQS();
 
 const receiveParams = {
   QueueUrl:            AWS_SQS_URL,
-  MaxNumberOfMessages: 1, 
+  MaxNumberOfMessages: 1,
   VisibilityTimeout:   2400, // 40 minutes
   WaitTimeSeconds:     20, // 20 seconds
 };
@@ -22,7 +22,8 @@ const pollMessages = async () => {
   console.log(new Date(), 'Polling messages');
   const checkResult = await checkProcessMessages();
   console.log('Check result:', checkResult);
-  if(checkResult) {
+  if(checkResult < 3) {
+    receiveParams.MaxNumberOfMessages = 3 - checkResult;
     sqs.receiveMessage(receiveParams, (err, data) => {
       if (err) {
         console.error('Error receiving message:', err);
@@ -86,7 +87,7 @@ async function checkProcessMessages() {
 
   const count = await getFolderCount(dataFolder)
 
-  return count < 3;
+  return count;
 }
 
 module.exports = {
