@@ -33,8 +33,8 @@ async function handle(templateName, data) {
     subtitleTemplate = ''
   } = data;
   console.time('BUILD_TIME');
-  
-  const folderPath = `./data/${adVideoId}`;
+  //TODO: Add error handling
+  const folderPath = `./data/${uuidv4()}`;
   if (fs.existsSync(folderPath)) {
     fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
       if (err) {

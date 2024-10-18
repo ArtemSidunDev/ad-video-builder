@@ -3,6 +3,7 @@ const handler = require('./handlers');
 const fs = require('fs');
 
 const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_SQS_URL } = process.env;
+const maxProcesses = 2;
 
 AWS.config.update({
   accessKeyId: AWS_KEY_ID,
@@ -14,16 +15,23 @@ const sqs = new AWS.SQS();
 const receiveParams = {
   QueueUrl:            AWS_SQS_URL,
   MaxNumberOfMessages: 1,
-  VisibilityTimeout:   2400, // 40 minutes
-  WaitTimeSeconds:     20, // 20 seconds
+  VisibilityTimeout:   60 * 4, // 40 minutes
+  WaitTimeSeconds:     10, // 20 seconds
 };
 
 const pollMessages = async () => {
-  console.log(new Date(), 'Polling messages');
+  console.log(new Date(), 'Start polling messages process');
+  
   const checkResult = await checkProcessMessages();
+  
   console.log('Check result:', checkResult);
-  if(checkResult < 3) {
-    receiveParams.MaxNumberOfMessages = 3 - checkResult;
+  
+  if(checkResult < maxProcesses) {
+    
+    receiveParams.MaxNumberOfMessages = maxProcesses - checkResult;
+    
+    console.log(new Date(), 'Polling messages');
+    
     sqs.receiveMessage(receiveParams, (err, data) => {
       if (err) {
         console.error('Error receiving message:', err);
@@ -33,9 +41,12 @@ const pollMessages = async () => {
 
       if (data.Messages && data.Messages.length) {
         for (const message of data.Messages) {
+          console.log('Processing message:', message.MessageId);
           processMessage(message);
         }
       }
+
+      console.log('Waiting for next poll');
     });
   }
 
