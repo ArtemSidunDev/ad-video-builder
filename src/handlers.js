@@ -9,7 +9,12 @@ const { run: generateSubtitlesGPT } = require('./subtitles_gpt.js');
 const { run: generateSubtitlesSRT } = require('./subtitles_srt.js');
 const { run: generateSubtitlesAzure } = require('./subtitles_azure.js');
 
-const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_S3_AD_VIDEOS_BUCKET } = process.env;
+const { 
+  AWS_KEY_ID, 
+  AWS_SECRET_KEY, 
+  AWS_S3_AD_VIDEOS_BUCKET, 
+  AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL 
+} = process.env;
 
 AWS.config.update({
   accessKeyId: AWS_KEY_ID,
@@ -49,7 +54,8 @@ async function handle(templateName, data) {
     
     const fileName = uuidv4();
     
-    await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=2160:3840" ${folderPath}/output_scale_command.mp4`);
+    await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=1152:2048" ${folderPath}/output_scale_command.mp4`);
+    await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=720:1280" ${folderPath}/output_low_scale_command.mp4`);
     
     fs.unlinkSync(`${folderPath}/output.mp4`);
     fs.renameSync(`${folderPath}/output_scale_command.mp4`, `${folderPath}/output.mp4`);
@@ -58,11 +64,25 @@ async function handle(templateName, data) {
     
     console.timeEnd('BUILD_TIME');
 
-    const url = await uploadToS3(`${folderPath}/output.mp4`, `${userId}/${adVideoId}/${fileName}.mp4`);
-    const coverUrl = await uploadToS3(coverPath, `${userId}/${adVideoId}/${fileName}_cover.png`, 'image/png');
+    const videoFilePath = `${userId}/${adVideoId}/${fileName}.mp4`
+    const videoLowFilePath = `${userId}/${adVideoId}/${fileName}_low.mp4`
+    const coverVideoFilePath = `${userId}/${adVideoId}/${fileName}_cover.png`
+    
+    await uploadToS3(`${folderPath}/output.mp4`, videoFilePath);
+    await uploadToS3(`${folderPath}/output_low_scale_command.mp4`, videoLowFilePath);
+    await uploadToS3(coverPath, coverVideoFilePath, 'image/png');
+
+    const url = `${AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL}/${videoFilePath}`;
+    const lowUrl = `${AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL}/${videoLowFilePath}`;
+    const coverUrl = `${AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL}/${coverVideoFilePath}`;
+
+    console.log('Video URL:', url);
+    console.log('Low Video URL:', lowUrl);
+    console.log('Cover URL:', coverUrl);
 
     await axios.patch(callBackUrl, {
       url,
+      lowUrl,
       coverUrl,
       status: 'done'
     })
@@ -129,9 +149,10 @@ async function prepare(folderPath, data) {
   } else {
     await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
   }
-  
+
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
-  fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
+
+  await runCommand(`ffmpeg -i ${folderPath}/avatar_end.mp4 -vf "scale=1152:2048" ${folderPath}/avatar.mp4`);
 
   await runCommand(`./templates/common/run.sh ${folderPath}`);
   
