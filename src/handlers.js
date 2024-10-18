@@ -54,7 +54,7 @@ async function handle(templateName, data) {
     
     const fileName = uuidv4();
     
-    await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=2160:3840" ${folderPath}/output_scale_command.mp4`);
+    await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=1152:2048" ${folderPath}/output_scale_command.mp4`);
     await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=720:1280" ${folderPath}/output_low_scale_command.mp4`);
     
     fs.unlinkSync(`${folderPath}/output.mp4`);
@@ -149,9 +149,10 @@ async function prepare(folderPath, data) {
   } else {
     await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
   }
-  
+
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
-  fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
+
+  await runCommand(`ffmpeg -i ${folderPath}/avatar_end.mp4 -vf "scale=1152:2048" ${folderPath}/avatar.mp4`);
 
   await runCommand(`./templates/common/run.sh ${folderPath}`);
   
