@@ -15,7 +15,7 @@ const sqs = new AWS.SQS();
 const receiveParams = {
   QueueUrl:            AWS_SQS_URL,
   MaxNumberOfMessages: 1,
-  VisibilityTimeout:   60 * 4, // 40 minutes
+  VisibilityTimeout:   60 * 20, // 20 minutes
   WaitTimeSeconds:     10, // 20 seconds
 };
 
