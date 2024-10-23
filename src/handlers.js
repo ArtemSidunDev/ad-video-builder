@@ -151,8 +151,7 @@ async function prepare(folderPath, data) {
   }
 
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
-
-  await runCommand(`ffmpeg -i ${folderPath}/avatar_end.mp4 -vf "scale=1152:2048" ${folderPath}/avatar.mp4`);
+  fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
 
   await runCommand(`./templates/common/run.sh ${folderPath}`);
   
