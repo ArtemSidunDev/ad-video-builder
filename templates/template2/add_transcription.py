@@ -23,8 +23,8 @@ FONT_OUTLINE_COLOR = "#000000"
 FONT_HIGHLIGHT_COLOR = "#CEA636"
 FONT_OUTLINE_WIDTH = 4
 
-video_dest_width = 1152
-video_dest_height = 2048
+video_dest_width = 1216
+video_dest_height = 2160
 
 foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
 

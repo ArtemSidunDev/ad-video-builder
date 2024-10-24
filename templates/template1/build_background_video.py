@@ -23,8 +23,8 @@ folder_path = args.folderPath
 
 # Load your image using PIL
 video_fps = 30
-video_dest_width = 1152
-video_dest_height = 2048
+video_dest_width = 1216
+video_dest_height = 2160
 wipe_left_time = 400
 
 with open('./templates/template1/input/transition_span.json', 'r') as f:
