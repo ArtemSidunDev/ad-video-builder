@@ -132,6 +132,7 @@ async function prepare(folderPath, data) {
       await download(mediaItem.url, mediaPathOrg);
   
       await sharp(mediaPathOrg)
+      .rotate()
       .resize(2432)
       .jpeg({ quality: 100 })
       .toFile(mediaPath);
