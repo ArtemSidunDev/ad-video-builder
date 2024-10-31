@@ -45,6 +45,9 @@ async function handle(templateName, data) {
   }
   fs.mkdirSync(folderPath, { recursive: true });
   try {
+    
+    await prepareMedia(folderPath, data);
+
     await Promise.all([
       runSiteScroll(productUrl, `${folderPath}/ss.mp4`, folderPath, 25),
       prepare(folderPath, data)
@@ -104,28 +107,18 @@ async function handle(templateName, data) {
   }
 }
 
-async function prepare(folderPath, data) {
+
+
+async function prepareMedia(folderPath, data) {
+  console.log('Preparing media');
   const {
-    media,
-    avatarUrl,
-    actionUrl,
-    musicUrl,
-    avatarSettings
+    media
   } = data;
-  const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
+
   const videos = media.filter(mediaItem => mediaItem.type === 'video');
   const images = media.filter(mediaItem => mediaItem.type === 'image');
   
-  await Promise.all([
-    download(avatarUrl, `${folderPath}/avatar.mp4`),
-    download(actionUrl, `${folderPath}/action.mp4`),
-    download(musicUrl, `${folderPath}/background_audio.mp3`),
-    download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
-    download(avatarSettings.bgImageUrl, `${folderPath}/background_image.jpg`),
-    videos.map(async (mediaItem, index) => {
-      const mediaPath = `${folderPath}/${index+1}.mp4`;
-      await download(mediaItem.url, mediaPath);
-    }),
+  await Promise.all(
     images.map(async (mediaItem, index) => {
       const mediaPathOrg = `${folderPath}/${index+1}_org.png`;
       const mediaPath = `${folderPath}/${index+1}.png`;
@@ -137,7 +130,37 @@ async function prepare(folderPath, data) {
       .jpeg({ quality: 100 })
       .toFile(mediaPath);
       fs.unlinkSync(mediaPathOrg);
+    }
+  ));
+  
+  await Promise.all(
+    videos.map(async (mediaItem, index) => {
+      const mediaPath = `${folderPath}/${index+1}.mp4`;
+      await download(mediaItem.url, mediaPath);
     })
+  );
+  
+  console.log('Media prepared');
+  
+  return true;
+}
+
+async function prepare(folderPath, data) {
+  const {
+    media,
+    avatarUrl,
+    actionUrl,
+    musicUrl,
+    avatarSettings
+  } = data;
+  const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
+  
+  await Promise.all([
+    download(avatarUrl, `${folderPath}/avatar.mp4`),
+    download(actionUrl, `${folderPath}/action.mp4`),
+    download(musicUrl, `${folderPath}/background_audio.mp3`),
+    download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
+    download(avatarSettings.bgImageUrl, `${folderPath}/background_image.jpg`),
   ]);
 
   let acceleration= 1
