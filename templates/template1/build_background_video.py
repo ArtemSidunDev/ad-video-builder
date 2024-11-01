@@ -7,7 +7,7 @@ Created on Fri Apr 26 00:26:48 2024
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from moviepy.editor import VideoClip, VideoFileClip
 import subprocess
 import json
@@ -17,6 +17,15 @@ import argparse
 parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
 args = parser.parse_args()
+
+
+# Aspect ratios for comparison
+ASPECT_RATIOS = {
+    "Square": (1, 1),
+    "Tall": (9, 16),
+    "Wide": (4, 3),
+    "Half": (9, 8)
+}
 
 folder_path = args.folderPath
 # add folder path to temp_folder
@@ -84,18 +93,6 @@ def write_videoclips(video_clip, idx):
                 f"{temp_folder}/{idx:02d}.mp4", fps=video_fps)
                 
 # Create the video clip for moving right effect
-def moving_right_frame(t):
-    new_left = int((image_width - video_dest_width) * t /
-                   duration)  # Moves from right to left
-    cropped_image = image.crop(
-        (image_width -
-         new_left -
-         video_dest_width,
-         0,
-         image_width -
-         new_left,
-         video_dest_height))
-    return np.array(cropped_image)
 
 def move_from_top(t):
     if t >= duration:
@@ -138,144 +135,386 @@ def pop_from_bottom(t):
     return np.array(back_image)
 
 
+def get_closest_aspect_ratio(image):
+    """
+    Returns the closest predefined aspect ratio to the given image dimensions.
+    
+    Parameters:
+    - image (PIL.Image): The input image.
+    
+    Returns:
+    - str: The name of the closest aspect ratio ('Square', 'Tall', or 'Wide').
+    - float: scale.
+    """
+    # Get image dimensions
+    image_width, image_height = image.size
+
+    # Calculate the aspect ratio of the image
+    image_aspect_ratio = image_width / image_height
+
+    # Find the closest match by calculating the difference with each target aspect ratio
+    closest_ratio_name, closest_ratio = min(
+        ASPECT_RATIOS.items(),
+        key=lambda ratio: abs(image_aspect_ratio - ratio[1][0] / ratio[1][1])
+    )
+
+    return closest_ratio_name, video_dest_height * image_width / ( video_dest_width * image_height)
+
+def resize_with_scaled_target(input_source, target="Tall", fill_blank=False, scale=1.0, scale_direction="width"):
+    """
+    Adjusts the given image or video clip to match a target aspect ratio ('Square', 'Tall', or 'Wide') 
+    with optional scaling applied to either width or height only.
+    Crops to center or adds black margins depending on the fill_blank parameter.
+
+    Parameters:
+    - input_source (PIL.Image or VideoFileClip): The input image or video clip.
+    - target (str): The target aspect ratio, one of 'Square', 'Tall', or 'Wide'.
+    - fill_blank (bool): If True, adds black margins to fill the aspect ratio;
+                         if False, crops to center.
+    - scale (float): Scaling factor for the target aspect ratio (e.g., 1.2 for 20% wider/taller).
+    - scale_direction (str): Specifies which dimension to scale; choose 'width' or 'height'.
+
+    Returns:
+    - PIL.Image or VideoFileClip: The adjusted image or video clip.
+    """
+    
+    def _resize_image(image, target_aspect_ratio, fill_blank):
+        """
+        Helper function to resize an image to the target aspect ratio.
+        """
+        image_width, image_height = image.size
+        image_aspect_ratio = image_width / image_height
+
+        if image_aspect_ratio > target_aspect_ratio:
+            # Image is wider than target; adjust width to match aspect ratio
+            new_height = image_height
+            new_width = int(new_height * target_aspect_ratio)
+        else:
+            # Image is taller than target; adjust height to match aspect ratio
+            new_width = image_width
+            new_height = int(new_width / target_aspect_ratio)
+        
+        if fill_blank:
+            # Add black margins to match target aspect ratio if needed
+            adjusted_image = ImageOps.pad(image, (new_width, new_height), color=(0, 0, 0), centering=(0.5, 0.5))
+        else:
+            # Crop the image to the largest possible centered area with the target aspect ratio
+            adjusted_image = ImageOps.fit(image, (new_width, new_height), centering=(0.5, 0.5))
+        
+        return adjusted_image
+
+    def _resize_video(video_clip, target_aspect_ratio, fill_blank):
+        """
+        Helper function to resize a video to the target aspect ratio by applying a function to each frame.
+        """
+        def process_frame(frame):
+            # Convert the frame to a PIL image for processing
+            image = Image.fromarray(frame)
+            adjusted_image = _resize_image(image, target_aspect_ratio, fill_blank)
+            return np.array(adjusted_image)
+        
+        # Apply the resize function to each frame of the video
+        adjusted_video = video_clip.fl_image(process_frame)
+        return adjusted_video
+    
+    # Validate target aspect ratio and scale_direction
+    if target not in ASPECT_RATIOS:
+        raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")
+    if scale_direction not in {"width", "height"}:
+        raise ValueError("Invalid scale direction. Choose 'width' or 'height'.")
+    
+    # Get the base target aspect ratio and apply scaling to one dimension
+    base_width_ratio, base_height_ratio = ASPECT_RATIOS[target]
+    if scale_direction == "width":
+        scaled_width_ratio = base_width_ratio * scale
+        scaled_height_ratio = base_height_ratio
+    else:  # scale_direction == "height"
+        scaled_width_ratio = base_width_ratio
+        scaled_height_ratio = base_height_ratio * scale
+    target_aspect_ratio = scaled_width_ratio / scaled_height_ratio
+    
+    # Check if input is an image
+    if isinstance(input_source, Image.Image):
+        return _resize_image(input_source, target_aspect_ratio, fill_blank)
+    elif isinstance(input_source, VideoFileClip):
+        return _resize_video(input_source, target_aspect_ratio, fill_blank)
+    else:
+        raise TypeError("Unsupported input type. Provide either an image (PIL.Image) or video clip (VideoFileClip).")
+
+def sliding_frame(t, direction, image, video_dest_width, video_dest_height, duration, scale=1.0, scale_direction="width"):
+    """
+    Returns a frame that slides the image in the specified direction, resizing it to match
+    the video destination dimensions without preserving aspect ratio.
+
+    Parameters:
+    - t (float): Current time in the video.
+    - direction (str): Direction of slide ('right', 'left', 'up', 'down').
+    - image (PIL.Image): The image to be resized and slid.
+    - video_dest_width (int): Width of the video frame.
+    - video_dest_height (int): Height of the video frame.
+    - duration (float): Duration of the sliding effect.
+
+    Returns:
+    - np.array: The resized and cropped image frame for the current time t.
+    """
+    if scale_direction == "width":
+        resize_width = int( video_dest_width * scale)
+        resize_height = video_dest_height
+    else:  # scale_direction == "height"
+        resize_width = video_dest_width
+        resize_height = int( video_dest_height * scale)
+        
+    resized_image = image.resize((resize_width, resize_height))
+
+    # Get dimensions of the resized image
+    image_width, image_height = resized_image.size
+    
+    # Calculate sliding offsets based on the direction
+    if direction == "right":
+        # Slide from left to right
+        new_left = int((image_width - video_dest_width) * t / duration)
+        cropped_image = resized_image.crop((new_left, 0, new_left + video_dest_width, video_dest_height))
+        
+    elif direction == "left":
+        # Slide from right to left
+        new_left = int((image_width - video_dest_width) * (1 - t / duration))
+        cropped_image = resized_image.crop((new_left, 0, new_left + video_dest_width, video_dest_height))
+        
+    elif direction == "up":
+        # Slide from bottom to top
+        new_top = int((image_height - video_dest_height) * (1 - t / duration))
+        cropped_image = resized_image.crop((0, new_top, video_dest_width, new_top + video_dest_height))
+        
+    elif direction == "down":
+        # Slide from top to bottom
+        new_top = int((image_height - video_dest_height) * t / duration)
+        cropped_image = resized_image.crop((0, new_top, video_dest_width, new_top + video_dest_height))
+        
+    else:
+        raise ValueError("Invalid direction. Choose 'right', 'left', 'up', or 'down'.")
+    
+    return np.array(cropped_image)
+
+def zoom_frame(t, image, video_dest_width, video_dest_height, duration, zoom_dest=1.0):
+    """
+    Returns a frame that applies a zoom effect (in or out) on the image, centered for smooth transitions.
+
+    Parameters:
+    - t (float): Current time in the video.
+    - image (PIL.Image): The image to be zoomed.
+    - video_dest_width (int): Width of the video frame.
+    - video_dest_height (int): Height of the video frame.
+    - duration (float): Duration of the zoom effect.
+    - zoom_dest (float): Target zoom factor. 
+                         >1 means zoom-in to original size; <1 means zoom-out from original size.
+
+    Returns:
+    - np.array: The resized image frame for the current time t.
+    """
+    image_width, image_height = image.size
+
+    # Calculate zoom factor based on whether zooming in or out
+    if zoom_dest > 1:  # Zooming in to the original size
+        zoom_factor = 1 / (zoom_dest - ((zoom_dest - 1) * (t / duration)**0.5))
+    elif zoom_dest < 1:  # Zooming out from the original size
+        zoom_factor = 1 - ((1 - zoom_dest) * (t / duration)**0.5)
+    else:
+        zoom_factor = 1  # No zoom effect if zoom_dest is 1
+
+    # Calculate new dimensions for the zoomed area
+    new_width = image_width * zoom_factor
+    new_height = image_height * zoom_factor
+
+    # Center-calculate cropping coordinates
+    left = (image_width - new_width) / 2
+    top = (image_height - new_height) / 2
+    right = left + new_width
+    bottom = top + new_height
+
+    # Crop and resize the image to fit video destination dimensions
+    cropped_image = image.crop((left, top, right, bottom))
+    resized_image = cropped_image.resize((video_dest_width, video_dest_height), Image.Resampling.LANCZOS)
+    
+    return np.array(resized_image)
+
+
 # ================== 1. Image to moving right video(1) ========================
+
 # Time : 0-3s
-image = Image.open(os.path.join(folder_path, "1.png"))
-image_width, image_height = image.size
+image = Image.open(os.path.join(folder_path, "1.png")).convert("RGB")
+
+closest_ratio_name, scale = get_closest_aspect_ratio( image)
 duration = get_durations(idx=1)
 
-video_clip = VideoClip(moving_right_frame, duration=duration)
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: zoom_frame(
+            t,
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            zoom_dest=0.7  # Target zoom level for final frame (e.g., <1 for zoom out)
+        ),
+        duration=duration
+    )
+else:
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    # adjusted_image.show()
+    video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="right",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            scale = scale,
+            scale_direction = 'width'
+        ),
+        duration=duration
+    )
+    
 write_videoclips(video_clip, idx=1)
 video_clip.close()
 
 # ================== 2. Image to moving right video(2) ========================
 # Time : 3-5s
-image = Image.open(os.path.join(folder_path, "2.png"))
-image_width, image_height = image.size
+image = Image.open(os.path.join(folder_path,"2.png")).convert("RGB")
+closest_ratio_name, scale = get_closest_aspect_ratio( image)
 duration = get_durations(idx=2)
 
-video_clip = VideoClip(moving_right_frame, duration=duration)
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    
+    video_clip = VideoClip(
+        lambda t: zoom_frame(
+            t,
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            zoom_dest=1.3  # Target zoom level for final frame (e.g., <1 for zoom out)
+        ),
+        duration=duration
+    )
+else:
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="left",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            scale = scale,
+            scale_direction = 'width'
+        ),
+        duration=duration
+    )
 write_videoclips(video_clip, idx=2)
 video_clip.close()
 
 # ================== 3. Resize Video into destination size ====================
+
 # Time : 5-7s
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(0, get_durations(idx=3))
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.h * dest_ratio)
-    new_height = clip.h
-else:
-    new_width = clip.w
-    new_height = int(clip.w / dest_ratio)
-
-cropped_clip = clip.crop(
-    x_center=(
-        clip.w // 2),
-    y_center=(
-        clip.h // 2),
-    width=new_width,
-    height=new_height).resize(
-    (video_dest_width,
-     video_dest_height))
-write_videoclips(cropped_clip, idx=3)
+clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).subclip(0, get_durations(idx=3))
+adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
+write_videoclips( adjusted_video, idx=3)
 clip.close()
 
 
 # ================== 4. Image to moving right video(3) ========================
 # Time : 7-10s
-image = Image.open(os.path.join(folder_path, "3.png"))
-image_width, image_height = image.size
+image = Image.open(os.path.join(folder_path,"3.png")).convert("RGB")
+closest_ratio_name, scale = get_closest_aspect_ratio( image)
 duration = get_durations(idx=4)
 
-video_clip = VideoClip(moving_right_frame, duration=duration)
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    
+    video_clip = VideoClip(
+        lambda t: zoom_frame(
+            t,
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            zoom_dest=1.3  # Target zoom level for final frame (e.g., <1 for zoom out)
+        ),
+        duration=duration
+    )
+else:
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="left",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            scale = scale,
+            scale_direction = 'width'
+        ),
+        duration=duration
+    )
+    
 write_videoclips(video_clip, idx=4)
 video_clip.close()
 
 # ================== 5. Image to zooming in video =============================
 # Time : 10-13s
-def zoom_out_frame(t):
-    # Use a smoother easing function for the zoom factor
-    zoom_factor = 1 - ((1 - zoom_dest) * (t / duration)**0.5)
-    
-    # Calculate new dimensions using floating-point arithmetic
-    new_width = image_width * zoom_factor
-    new_height = image_height * zoom_factor
-    
-    # Center the cropped area with floating-point precision
-    left = (image_width - new_width) / 2
-    top = (image_height - new_height) / 2
-    right = left + new_width
-    bottom = top + new_height
-    
-    # Crop the image to the new dimensions
-    cropped_image = image.crop((left, top, right, bottom))
-    
-    # Calculate aspect ratio of the video destination
-    video_aspect_ratio = video_dest_width / video_dest_height
-    image_aspect_ratio = new_width / new_height
-
-    # Resize with aspect ratio correction
-    if image_aspect_ratio > video_aspect_ratio:
-        # Image is wider than the video aspect ratio
-        resize_height = video_dest_height
-        resize_width = int(new_width * (video_dest_height / new_height))
-    else:
-        # Image is taller than the video aspect ratio
-        resize_width = video_dest_width
-        resize_height = int(new_height * (video_dest_width / new_width))
-    
-    resized_image = cropped_image.resize((resize_width, resize_height), Image.Resampling.LANCZOS)
-    
-    # Center crop the resized image to the exact video destination size
-    left = (resize_width - video_dest_width) / 2
-    top = (resize_height - video_dest_height) / 2
-    right = left + video_dest_width
-    bottom = top + video_dest_height
-
-    final_image = resized_image.crop((left, top, right, bottom))
-    
-    return np.array(final_image)
 
 # Load the image and convert it to RGB
-rgba_image = Image.open(os.path.join(folder_path, "4.png"))
-image = rgba_image.convert("RGB")
-image_width, image_height = image.size
+image = Image.open(os.path.join(folder_path,"4.png")).convert("RGB")
+closest_ratio_name, scale = get_closest_aspect_ratio( image)
 duration = get_durations(idx=5)
-zoom_dest = 0.7
 
 # Create the video clip using the modified zoom_out_frame function
-video_clip = VideoClip(lambda t: zoom_out_frame(t), duration=duration)
-
-# Write the video clip to a file (assuming the write_videoclips function is defined)
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: zoom_frame(
+            t,
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            zoom_dest=0.7  # Target zoom level for final frame (e.g., <1 for zoom out)
+        ),
+        duration=duration
+    )
+else:
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="right",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            scale = scale,
+            scale_direction = 'width'
+        ),
+        duration=duration
+    )
+    
 write_videoclips(video_clip, idx=5)
-
-# Close the video clip to free resources
 video_clip.close()
-
 
 # ================== 6. Image to dropping down from top video =================
 # Time : 13-14s
 
 back_image = Image.fromarray(video_clip.get_frame(video_clip.duration - 0.1))
+fore_image = Image.open(os.path.join(folder_path,"5.png")).convert("RGB")
 
-fore_image = Image.open(os.path.join(folder_path, "5.png"))
-image_width, image_height = fore_image.size
+image = resize_with_scaled_target( fore_image, target="Half").resize((video_dest_width, video_dest_height //2))
+
 duration = 1 / 4
-
-crop_height = int(image_width * video_dest_height / (video_dest_width * 2))
-image = fore_image.crop(
-    (0,
-     image_height -
-     crop_height,
-     image_width,
-     image_height)).resize(
-    (video_dest_width,
-     video_dest_height //
-     2))
-
 video_clip = VideoClip(drop_from_top, duration=get_durations(idx=6))
 write_videoclips(video_clip, idx=6)
 
@@ -283,14 +522,10 @@ write_videoclips(video_clip, idx=6)
 # ================== 7. Image to poping up from bottom video ==================
 # Time : 14-16.5s
 back_image = Image.fromarray(video_clip.get_frame(0.99))
-fore_image = Image.open(os.path.join(folder_path, "6.png")).convert("RGB")
-image_width, image_height = fore_image.size
-duration = 1 / 4
+fore_image = Image.open(os.path.join(folder_path,"6.png")).convert("RGB")
 
-crop_height = int(image_width * video_dest_height / (video_dest_width * 2))
-image = fore_image.crop(
-    (0, 0, image_width, crop_height)).resize(
-        (video_dest_width, video_dest_height // 2))
+image = resize_with_scaled_target( fore_image, target="Half").resize((video_dest_width, video_dest_height //2))
+duration = 1 / 4
 
 video_clip = VideoClip(pop_from_bottom, duration=get_durations(idx=7))
 write_videoclips(video_clip, idx=7)
@@ -298,7 +533,6 @@ video_clip.close()
 
 # ================== 8. Video subclip from avatar =============================
 # Time : 16.5-19s
-
 
 def split_top_bottom(t):
     duration = end_time - start_time
@@ -367,7 +601,7 @@ def split_top_bottom(t):
 start_time = 0.2
 end_time = 0.8
 front_image = Image.fromarray(video_clip.get_frame(2.49))
-video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(
+video_clip = VideoFileClip(os.path.join(folder_path,"bg_avatar.mp4")).subclip(
     get_timestamp_with_transtion_span(8)[0],
     get_timestamp_with_transtion_span(8)[1]).resize(
         (video_dest_width,
@@ -380,97 +614,92 @@ result_clip.close()
 
 # ================== 9. Image to zooming out and moving right video ===========
 # Time : 19-21s
-def moving_and_zoom_frame(t):
-    new_left = int(image_width / 4) - int((image_width - \
-                   video_dest_width) * t / duration) # Moves from right to left
 
-    zoom_factor = 1 - (1 - 1 / zoom_dest) * (duration - t) / \
-        duration  # decrease zoom gradually over time
-
-    new_width = int(video_dest_width * zoom_factor)
-    new_height = int(video_dest_height * zoom_factor)
-
-    left = (image_width - new_width) // 2 + new_left
-    top = (image_height - new_height) // 2
-    right = left + new_width
-    bottom = top + new_height
-
-    cropped_image = image.crop((left, top, right, bottom))
-    resized_image = cropped_image.resize((video_dest_width, video_dest_height))
-    return np.array(resized_image)
-
-rgba_image = Image.open(os.path.join(folder_path, "7.png"))
-zoom_dest = 1.3
+image = Image.open(os.path.join(folder_path,"7.png")).convert("RGB")
+closest_ratio_name, scale = get_closest_aspect_ratio( image)
 duration = get_durations(idx=9)
 
-image = rgba_image.convert("RGB")
-image_width, image_height = image.size
-video_clip.close()
-
-video_clip = VideoClip(moving_and_zoom_frame, duration=duration)
+# Create the video clip using the modified zoom_out_frame function
+if closest_ratio_name == "Tall":
+    closest_ratio_name = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: zoom_frame(
+            t,
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            zoom_dest=1.3  # Target zoom level for final frame (e.g., <1 for zoom out)
+        ),
+        duration=duration
+    )
+else:
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="right",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=duration,
+            scale = scale,
+            scale_direction = 'width'
+        ),
+        duration=duration
+    )
+    
 write_videoclips(video_clip, idx=9)
 video_clip.close()
+
+# def moving_and_zoom_frame(t):
+#     new_left = int(image_width / 4) - int((image_width - \
+#                    video_dest_width) * t / duration) # Moves from right to left
+
+#     zoom_factor = 1 - (1 - 1 / zoom_dest) * (duration - t) / \
+#         duration  # decrease zoom gradually over time
+
+#     new_width = int(video_dest_width * zoom_factor)
+#     new_height = int(video_dest_height * zoom_factor)
+
+#     left = (image_width - new_width) // 2 + new_left
+#     top = (image_height - new_height) // 2
+#     right = left + new_width
+#     bottom = top + new_height
+
+#     cropped_image = image.crop((left, top, right, bottom))
+#     resized_image = cropped_image.resize((video_dest_width, video_dest_height))
+#     return np.array(resized_image)
+
+# rgba_image = Image.open(os.path.join(folder_path,"9.png").resize((1500, 1500))
+# zoom_dest = 1.3
+# duration = get_durations(idx=9)
+
+# image = rgba_image.convert("RGB")
+# image_width, image_height = image.size
+# video_clip.close()
+
 
 # ================== 10. Resize Video into destination size ==============
 # Time : 21-24.5s
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(0, get_durations(idx=10))
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.h * dest_ratio)
-    new_height = clip.h
-else:
-    new_width = clip.w
-    new_height = int(clip.w / dest_ratio)
-
-cropped_clip = clip.crop(
-    x_center=(
-        clip.w // 2),
-    y_center=(
-        clip.h // 2),
-    width=new_width,
-    height=new_height).resize(
-    (video_dest_width,
-     video_dest_height))
-write_videoclips(cropped_clip, idx=10)
+clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).subclip(0, get_durations(idx=10))
+adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
+write_videoclips(adjusted_video, idx=10)
 clip.close()
-
 
 # ================== 11. Video subclip from avatar =======================
 # Time : 24.5-29s
-clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
+clip_start = get_timestamp_with_transtion_span(11)[0]
 
-start_time, end_time = get_timestamp_with_transtion_span(11)
+clip = VideoFileClip(os.path.join(folder_path,"bg_avatar.mp4"))
 
-end_time = clip.duration
+clip_end = clip.duration
 
-clip = clip.subclip(start_time, end_time)
+clip = clip.subclip(clip_start, clip_end)
 
-offset_for_avatar = clip.duration
-
-
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.size[1] * dest_ratio)
-    new_height = clip.size[1]
-else:
-    new_width = clip.size[0]
-    new_height = int(clip.size[0] / dest_ratio)
-
-cropped_clip = clip.crop(
-    x_center=(
-        clip.w // 2),
-    y_center=(
-        clip.h // 2),
-    width=new_width,
-    height=new_height).resize(
-    (video_dest_width,
-     video_dest_height))
-write_videoclips(cropped_clip, idx=11)
+adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
+write_videoclips(adjusted_video, idx=11)
 clip.close()
 # ================== 12. Blur video ===========================================
 # Time : 29-35s
@@ -479,28 +708,9 @@ def blur_frame(frame):
     return cv2.GaussianBlur(frame, (51, 51), 10)
 
 blur_amount = 3
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(0, get_durations(idx=12))
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.size[1] * dest_ratio)
-    new_height = clip.size[1]
-else:
-    new_width = clip.size[0]
-    new_height = int(clip.size[0] / dest_ratio)
-
-cropped_clip = clip.crop(
-    x_center=(
-        clip.w // 2),
-    y_center=(
-        clip.h // 2),
-    width=new_width,
-    height=new_height).resize(
-    (video_dest_width,
-     video_dest_height))
-
-background_clip = cropped_clip.fl_image(blur_frame)
+clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).subclip(0, get_durations(idx=12))
+adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
+background_clip = adjusted_video.fl_image(blur_frame)
 clip.close()
 # set parameter for replace_green_background function
 
@@ -591,6 +801,7 @@ for command in commands:
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while executing the command: {e.stderr}")
 
+
 # ====================== ADD TRANSITION BETWEEN THEM===========================
 video_clip_names = [f"{i+1:02d}.mp4" for i in range(7)]
 video_clip_names.append("08-09-10.mp4")
@@ -601,9 +812,10 @@ video_clip_names = [os.path.join(temp_folder, video_clip_name) for video_clip_na
 
 background_video = os.path.join(temp_folder, "background_video.mp4")
 
-command = ['ffmpeg-concat', '-T', "./templates/template1/input/transition.json",
-           '-o', background_video, '-c 9'] + video_clip_names
+command = ['ffmpeg-concat', '-T', "./templates/template1/input/transition.json",'-o', background_video, '-c 9'] + video_clip_names
+
 print(" ".join(command))
+
 try:
     completed_process = subprocess.run(
         " ".join(command),
@@ -619,7 +831,6 @@ try:
 
     else:
         print(f"command includes errors:  {completed_process.stderr}")
-        print(f"command includes errors:  {completed_process}")
 except subprocess.CalledProcessError as e:
     print(f"Error executing command: {e}")
 
