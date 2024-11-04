@@ -246,13 +246,13 @@ final_video = CompositeVideoClip([input_video] + all_linelevel_splits)
 
 # Set the audio of the final video to be the same as the input video
 
+avatar_video = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
+
 transition_audio = AudioFileClip("./templates/template1/input/transition_audio.wav").fx(afx.audio_normalize).fx(afx.volumex, 0.3)
 audios = [foreground_audio.fx(afx.audio_normalize).fx(afx.volumex, 1.3)]
 audios.append(
     VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx(
-        afx.audio_normalize).fx(
-            afx.volumex,
-        0.8).set_start(input_video_duration - 1.5))
+        afx.audio_normalize).fx(afx.volumex,0.8).set_start(avatar_video.duration))
 audios.append(
     AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).fx(
         afx.audio_normalize).fx(
@@ -268,7 +268,7 @@ audios.append(transition_audio.set_start(16.2))
 audios.append(transition_audio.set_start(18.7))
 audios.append(transition_audio.set_start(20.8))
 audios.append(transition_audio.set_start(24.2))
-audios.append(transition_audio.set_start(28.7))
+audios.append(transition_audio.set_start(avatar_video.duration - 0.2))
 
 composite_audio_clip = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio_clip)
