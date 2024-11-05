@@ -566,7 +566,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=3)
 clip_start, clip_end = get_video_timespan( idx=3)
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.MP4")).subclip(5, 5 + clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(5, 5 + clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -605,7 +605,7 @@ processed_clip.close()
 clip_length = get_video_length( idx=4)
 clip_start, clip_end = get_video_timespan( idx=4)
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.MP4")).subclip(8, 5 + clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(8, 5 + clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -1166,7 +1166,7 @@ def blur_frame(frame):
 
 blur_amount = 3
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.MP4")).subclip(10, 10+clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(10, 10+clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
