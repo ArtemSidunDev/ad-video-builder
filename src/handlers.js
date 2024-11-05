@@ -126,10 +126,10 @@ async function prepareMedia(folderPath, data) {
   
       await sharp(mediaPathOrg)
       .rotate()
-      .resize(2432)
+      .resize(1216)
       .jpeg({ quality: 100 })
       .toFile(mediaPath);
-      fs.unlinkSync(mediaPathOrg);
+      // fs.unlinkSync(mediaPathOrg);
     }
   ));
   
