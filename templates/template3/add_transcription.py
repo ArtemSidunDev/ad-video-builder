@@ -268,7 +268,10 @@ audios.append(transition_audio.set_start(20.8))
 audios.append(camera_audio.set_start(23.8))
 audios.append(camera_audio.set_start(foreground_audio.duration - 0.7))
 
-audios.append( VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx( afx.audio_normalize).fx( afx.volumex, 0.8).set_start(31.2))
+audios.append( VideoFileClip(os.path.join(folder_path, "action.mp4"))
+              .audio.fx( afx.audio_normalize)
+              .fx( afx.volumex, 0.8)
+              .set_start(foreground_audio.duration))
 
 composite_audio_clip = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio_clip)
