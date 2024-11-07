@@ -45,6 +45,9 @@ async function handle(templateName, data) {
   }
   fs.mkdirSync(folderPath, { recursive: true });
   try {
+    
+    await prepareMedia(folderPath, data);
+
     await Promise.all([
       runSiteScroll(productUrl, `${folderPath}/ss.mp4`, folderPath, 25),
       prepare(folderPath, data)
@@ -104,6 +107,68 @@ async function handle(templateName, data) {
   }
 }
 
+
+
+async function prepareMedia(folderPath, data) {
+  console.log('Preparing media');
+  const {
+    media
+  } = data;
+
+  const videos = media.filter(mediaItem => mediaItem.type === 'video');
+  const images = media.filter(mediaItem => mediaItem.type === 'image');
+  
+  const processImage = async (mediaItem, index) => {
+    const mediaPathOrg = `${folderPath}/${index + 1}_org.png`;
+    const mediaPath = `${folderPath}/${index + 1}.png`;
+    try {
+      await download(mediaItem.url, mediaPathOrg);
+      await sharp(mediaPathOrg)
+        .rotate()
+        .resize(1216)
+        .jpeg({ quality: 100 })
+        .toFile(mediaPath);
+      fs.unlinkSync(mediaPathOrg);
+      return { success: true, path: mediaPath };
+    } catch (error) {
+      console.error('Error processing image:', mediaItem.url);
+      return { success: false, path: mediaPath };
+    }
+  };
+
+  const results = await Promise.all(images.map(processImage));
+  const goodImages = results.filter(result => result.success).map(result => result.path);
+  const badImages = results.filter(result => !result.success).map(result => result.path);
+
+  if (goodImages.length === 0) {
+    throw new Error('No images to process');
+  }
+
+  if (badImages.length > 0) {
+    let i = 0;
+    while (badImages.length > 0) {
+      const goodImage = goodImages[i];
+      const badImage = badImages.shift();
+      fs.copyFileSync(goodImage, badImage);
+      i++;
+      if (i >= goodImages.length) {
+        i = 0;
+      }
+    }
+  }
+  
+  await Promise.all(
+    videos.map(async (mediaItem, index) => {
+      const mediaPath = `${folderPath}/${index+1}.mp4`;
+      await download(mediaItem.url, mediaPath);
+    })
+  );
+  
+  console.log('Media prepared');
+  
+  return true;
+}
+
 async function prepare(folderPath, data) {
   const {
     media,
@@ -113,8 +178,6 @@ async function prepare(folderPath, data) {
     avatarSettings
   } = data;
   const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
-  const videos = media.filter(mediaItem => mediaItem.type === 'video');
-  const images = media.filter(mediaItem => mediaItem.type === 'image');
   
   await Promise.all([
     download(avatarUrl, `${folderPath}/avatar.mp4`),
@@ -122,21 +185,6 @@ async function prepare(folderPath, data) {
     download(musicUrl, `${folderPath}/background_audio.mp3`),
     download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
     download(avatarSettings.bgImageUrl, `${folderPath}/background_image.jpg`),
-    videos.map(async (mediaItem, index) => {
-      const mediaPath = `${folderPath}/${index+1}.mp4`;
-      await download(mediaItem.url, mediaPath);
-    }),
-    images.map(async (mediaItem, index) => {
-      const mediaPathOrg = `${folderPath}/${index+1}_org.png`;
-      const mediaPath = `${folderPath}/${index+1}.png`;
-      await download(mediaItem.url, mediaPathOrg);
-  
-      await sharp(mediaPathOrg)
-      .resize(2432)
-      .jpeg({ quality: 100 })
-      .toFile(mediaPath);
-      fs.unlinkSync(mediaPathOrg);
-    })
   ]);
 
   let acceleration= 1
