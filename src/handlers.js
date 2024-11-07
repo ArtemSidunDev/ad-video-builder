@@ -118,20 +118,44 @@ async function prepareMedia(folderPath, data) {
   const videos = media.filter(mediaItem => mediaItem.type === 'video');
   const images = media.filter(mediaItem => mediaItem.type === 'image');
   
-  await Promise.all(
-    images.map(async (mediaItem, index) => {
-      const mediaPathOrg = `${folderPath}/${index+1}_org.png`;
-      const mediaPath = `${folderPath}/${index+1}.png`;
+  const processImage = async (mediaItem, index) => {
+    const mediaPathOrg = `${folderPath}/${index + 1}_org.png`;
+    const mediaPath = `${folderPath}/${index + 1}.png`;
+    try {
       await download(mediaItem.url, mediaPathOrg);
-  
       await sharp(mediaPathOrg)
-      .rotate()
-      .resize(1216)
-      .jpeg({ quality: 100 })
-      .toFile(mediaPath);
-      // fs.unlinkSync(mediaPathOrg);
+        .rotate()
+        .resize(1216)
+        .jpeg({ quality: 100 })
+        .toFile(mediaPath);
+      fs.unlinkSync(mediaPathOrg);
+      return { success: true, path: mediaPath };
+    } catch (error) {
+      console.error('Error processing image:', mediaItem.url);
+      return { success: false, path: mediaPath };
     }
-  ));
+  };
+
+  const results = await Promise.all(images.map(processImage));
+  const goodImages = results.filter(result => result.success).map(result => result.path);
+  const badImages = results.filter(result => !result.success).map(result => result.path);
+
+  if (goodImages.length === 0) {
+    throw new Error('No images to process');
+  }
+
+  if (badImages.length > 0) {
+    let i = 0;
+    while (badImages.length > 0) {
+      const goodImage = goodImages[i];
+      const badImage = badImages.shift();
+      fs.copyFileSync(goodImage, badImage);
+      i++;
+      if (i >= goodImages.length) {
+        i = 0;
+      }
+    }
+  }
   
   await Promise.all(
     videos.map(async (mediaItem, index) => {
