@@ -32,6 +32,7 @@ async function handle(templateName, data) {
     productUrl,
     subtitleTemplate = ''
   } = data;
+  console.log('Processing videos', adVideoId, userId)
   console.time('BUILD_TIME');
   //TODO: Add error handling
   const folderPath = `./data/${uuidv4()}`;
@@ -92,6 +93,7 @@ async function handle(templateName, data) {
 
     return true;
   } catch (error) {
+    console.error(adVideoId, userId)
     console.error(error);
     await axios.patch(errorCallBackUrl, {
       error,
