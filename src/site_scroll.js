@@ -71,10 +71,10 @@ const autoScroll = async (page) => {
 };
 
 const startSiteProcessing = async (siteUrl, folderPath) => {
-    
-    const browser = await launch({args: ['--no-sandbox']});
-    
+    let browser;
     try {
+        browser = await launch({args: ['--no-sandbox']});
+        
         const page = await browser.newPage();
         
         const userAgent = new UserAgent();
@@ -158,7 +158,6 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
 
     } catch (error) {
         console.error(error);
-        browser.close();
         return [];
     }
 };
