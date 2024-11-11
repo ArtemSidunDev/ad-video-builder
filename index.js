@@ -6,6 +6,7 @@ const handler = require('./src/handlers');
 const awsSqs = require('./src/aws_sqs');
 const express = require('express');
 const app = express();
+const fs = require('fs');
 
 awsSqs.pollMessages();
 
@@ -36,6 +37,12 @@ app.post('/:templateName', async (req, res) => {
     });
   }
 });
+
+fs.readdirSync('./data').forEach(file => {
+  if (fs.lstatSync(`./data/${file}`).isDirectory()) {
+    fs.rmdirSync(`./data/${file}`, { recursive: true });
+  }
+})
 
 app.listen(port, () => {
   console.log(`app listening at ${port}`);
