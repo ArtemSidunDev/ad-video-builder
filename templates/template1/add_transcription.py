@@ -1,12 +1,12 @@
 
 import numpy as np
-from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
 import json
-from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip, VideoFileClip, ColorClip
+from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip, VideoFileClip, ColorClip, ImageClip
 import moviepy.audio.fx.all as afx
 import os
 import shutil
 import math
+from PIL import Image, ImageDraw
 import argparse
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
@@ -20,8 +20,10 @@ FONT = "./templates/template1/input/ProximaNova-Black.ttf"
 FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#CEA636"
+FONT_HIGHLIGHT_COLOR = "#D2042D"
 FONT_OUTLINE_WIDTH = 4
+FONT_MARGIN = 40
+HIGHLIGHT_RADIUS = 21
 
 video_dest_width = 1216
 video_dest_height = 2160
@@ -221,8 +223,21 @@ def create_caption(
         word_clip = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH).set_start( textJSON['start']).set_duration( full_duration)
         word_clip = word_clip.set_position((centered_x_pos, start_y_pos + word_info['y_pos'] * 0.8))
         word_clips.append(word_clip)
-        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=highlightcolor, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH).set_start(word_info['start']).set_duration(word_info['duration'])
-        word_clip_highlight = word_clip_highlight.set_position((centered_x_pos, start_y_pos + word_info['y_pos'] * 0.8))
+
+        word_clip_temp = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR)        
+        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR, size=(word_clip_temp.w + FONT_MARGIN,word_clip_temp.h), method="caption")
+        mask_image = Image.new("RGB", (word_clip_highlight.w, word_clip_highlight.h), 0)
+        draw = ImageDraw.Draw(mask_image)
+        draw.rounded_rectangle(
+            [(0, 0), (word_clip_highlight.w, word_clip_highlight.h)],
+            radius = HIGHLIGHT_RADIUS,
+            fill=255
+        )
+        mask_clip = ImageClip(np.array(mask_image), ismask=True).set_duration(word_info['duration'])
+                
+        word_clip_highlight = word_clip_highlight.set_mask(mask_clip).set_start(word_info['start']).set_duration(word_info['duration'])
+        
+        word_clip_highlight = word_clip_highlight.set_position( ( centered_x_pos-FONT_MARGIN//2, start_y_pos + word_info['y_pos'] * 0.8))       
         word_clips.append(word_clip_highlight)
         
     return word_clips  

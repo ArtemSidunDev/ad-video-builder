@@ -75,7 +75,10 @@ function parseSRT(data) {
   let match;
 
   while ((match = srtRegex.exec(data)) !== null) {
-    const formattedText = match[4].replace(/([.,!?])([^\s])/g, '$1 $2').replace(/\n/g, ' ');
+    const formattedText = match[4]
+      .replace(/([.,!?])([^\s])/g, '$1 $2')
+      .replace(/\. -/g, '.')
+      .replace(/\n/g, ' ');
     
     result.push({
       start: convertTimeToSeconds(match[2]),
