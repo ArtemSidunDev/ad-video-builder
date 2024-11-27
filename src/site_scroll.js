@@ -8,6 +8,56 @@ const width = 430;
 const height = 932;
 const deviceScaleFactor = 1;
 
+const popupConfig = [
+    {
+        popupSelector: '.pos-popup_center',
+        closeButtonSelector: '.proof-factor-cb-prompt-close',
+        removePopup: true
+    }
+];
+
+const closePopups = async (page, popups) => {
+    for (const popup of popups) {
+        const { popupSelector, closeButtonSelector, removePopup } = popup;
+
+        try {
+            await page.waitForSelector(popupSelector, { timeout: 5000 });
+
+            if (closeButtonSelector) {
+                const closeButton = await page.$(closeButtonSelector);
+                if (closeButton) {
+                    await closeButton.click();
+                    continue;
+                } else {
+                    try {
+                        await page.evaluate((selector) => {
+                            const popup = document.querySelector(selector);
+                            if (popup) {
+                                popup.style.display = 'none';
+                                console.log(`Hide ${selector}`);
+                            }
+                        }, popupSelector);
+                    } catch (error) {
+                        console.log(`popupSelector, ${error.message}`);
+                    }
+                }
+            }
+
+            if (removePopup) {
+                await page.evaluate((selector) => {
+                    const popup = document.querySelector(selector);
+                    if (popup) {
+                        popup.style.display = 'none';
+                        console.log(`Попап скрыт: ${selector}`);
+                    }
+                }, popupSelector);
+            }
+        } catch (error) {
+            console.log('popupSelector', error.message);
+        }
+    }
+};
+
 const cleanup = async (screenshots) => {
     for (const file of screenshots) {
         const resultFs = await fs.access(file).catch(() => null);
@@ -73,6 +123,10 @@ const autoScroll = async (page) => {
 const startSiteProcessing = async (siteUrl, folderPath) => {
     let browser;
     try {
+        const siteUrlLower = siteUrl.toLowerCase();
+        if(siteUrlLower.includes('etsy') && siteUrlLower.includes('amazon') || siteUrlLower.includes('amzn')) {
+            return [];
+        }
         browser = await launch({args: ['--no-sandbox']});
         
         const page = await browser.newPage();
@@ -89,7 +143,8 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
                 isLandscape: false,
             },
             userAgent: userAgent.toString(),
-        }); 
+        });
+
         await page.goto(siteUrl, {timeout: 1000 * 60 * 5, waitUntil: 'domcontentloaded'});
 
         const screenshots = [];
@@ -106,6 +161,8 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
         await delay(1000);
         let i = 0;
         console.log('Taking screenshots');
+
+        await closePopups(page, popupConfig);
 
         if(siteHeight > 10000) {
             page.setViewport({
@@ -147,7 +204,7 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
             adaptiveFiltering: true,
             effort:            6,
         })
-        .toFile(`${folderPath}/screenshot${i}.png`);    
+        .toFile(`${folderPath}/screenshot${i}.png`);
         screenshots.push(`${folderPath}/screenshot${i}.png`);
         
         console.log('Screenshots taken');
@@ -164,8 +221,10 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
 
 const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration) => {
     console.log('Running site scroll');
+    const siteUrlLower = siteUrl.toLowerCase();
     const screenshots = await startSiteProcessing(siteUrl, folderPath);
     console.log('Site scroll screenshots created');
+    
     if(screenshots.length === 0) {
         const image1 = `${folderPath}/1.png`;
         const image2 = `${folderPath}/2.png`;
