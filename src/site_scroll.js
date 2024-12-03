@@ -124,7 +124,7 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
     let browser;
     try {
         const siteUrlLower = siteUrl.toLowerCase();
-        if(siteUrlLower.includes('etsy') && siteUrlLower.includes('amazon') || siteUrlLower.includes('amzn')) {
+        if(siteUrlLower.includes('etsy') || siteUrlLower.includes('amazon') || siteUrlLower.includes('amzn')) {
             return [];
         }
         browser = await launch({args: ['--no-sandbox']});
