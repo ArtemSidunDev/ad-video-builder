@@ -1,0 +1,36 @@
+[
+    {
+        "name": "SimpleZoom",
+        "duration": 600,
+        "params": { "zoom_quickness": 0.4 }
+    },
+    {
+        "name": "Directional",
+        "duration": 0
+    },
+    {
+        "name": "CrossZoom",
+        "duration": 400,
+        "params": { "scale": 1.5 }
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 600,
+        "params": { "zoom_quickness": 0.4 }
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 600,
+        "params": { "zoom_quickness": 0.4 }
+    },
+    {
+        "name": "CrossZoom",
+        "duration": 400,
+        "params": { "scale": 1.5 }
+    },
+    {
+        "name": "SimpleZoom",
+        "duration": 600,
+        "params": { "zoom_quickness": 0.4 }
+    }
+]

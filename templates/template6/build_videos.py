@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Updated on Feb 1 07:01:03 2024
+Created on Mon May  6 07:01:03 2024
 
 @author: codemaven
 """
@@ -35,16 +35,42 @@ ASPECT_RATIOS = {
     "Half": (9, 8)
 }
 
-video_spans = [ 2, 2, 3, 4, 3, 2, 5, 5, 4, 5]
-transition_spans = [0.4, 0.4, 0, 0.6, 0.4, 0, 0.6, 0.4, 0.4]
+video_spans = [ 2, 2, 3, 4, 4, 3, 3, 3, 6.7, 4.3]
+transition_spans = [0.6, 0.6, 0, 0.4, 0.6, 0.6, 0.4, 0.4, 0.6]
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
     os.makedirs(temp_folder)
+
+# Create a video with increasing size and decreasing transparency
+def appearance_effect(t):
+    global transition_span
+    back_frame = background_clip.get_frame(t).copy()
+    fore_frame = foreground_clip.get_frame(t)
     
-def add_foreground(frame, t):
-    global foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height
-    # return frame
+    fore_width, fore_height =  foreground_clip.w, foreground_clip.h
+
+    if t < transition_span:
+        fore_width = fore_width // 2 + int( fore_width // 2 * t/transition_span)
+        fore_height = fore_height // 2 + int( fore_height // 2 * t/transition_span)
+    elif t > background_clip.duration - transition_span:
+        fore_width = fore_width // 2 + int( fore_width // 2 * (background_clip.duration-t)/transition_span)
+        fore_height = fore_height // 2 + int( fore_height // 2 * (background_clip.duration-t)/transition_span)
+        
+    left = (background_clip.w - fore_width) // 2 + left_offest
+    top = int(background_clip.h * 3 / 4 - fore_height/2)
+    right = left + fore_width
+    bottom = top + fore_height
+    
+    if t < transition_span:
+        back_frame[top:bottom, left:right]= back_frame[top:bottom, left:right] * (1-t/transition_span) + cv2.resize( fore_frame, (right-left, bottom-top)) * (t/transition_span)
+    elif t > background_clip.duration - transition_span:
+        back_frame[top:bottom, left:right]= back_frame[top:bottom, left:right] * (1-(background_clip.duration-t)/transition_span) + cv2.resize( fore_frame, (right-left, bottom-top)) * ( ( background_clip.duration-t)/transition_span)
+    else:
+        back_frame[top:bottom, left:right]= fore_frame
+    return back_frame
+
+def add_foreground(frame, t, foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height):
     if foreground_x is None or foreground_y is None:
         return frame
 
@@ -63,10 +89,11 @@ def add_foreground(frame, t):
     foreground_frame = cv2.bitwise_and(
         front_frame, front_frame, mask=mask_inverse)
 
-    foreground_with_mask = np.zeros( frame.shape, dtype=np.uint8)
+    foreground_with_mask = np.zeros(frame.shape, dtype=np.uint8)
     foreground_with_mask[foreground_y: foreground_y +
                          foreground_height, foreground_x: foreground_x +
-                         foreground_width,] = foreground_frame
+                         foreground_width] = foreground_frame
+    
     # Invert the mask
     black_mask = np.zeros(
         (frame.shape[0],
@@ -81,35 +108,6 @@ def add_foreground(frame, t):
         frame, frame, mask=total_mask_inverse)
     final_frame = cv2.bitwise_or(foreground_with_mask, background_with_mask)
     return final_frame
-
-def prepare_image(image_path, dest_width, dest_height):
-    # Load the image and convert it to RGB
-    image = Image.open(image_path).convert("RGB")
-    original_width, original_height = image.size
-
-    # Calculate the aspect ratio of the image and the destination
-    aspect_ratio = original_width / original_height
-    dest_ratio = dest_width / dest_height
-
-    # Adjust the image size to match the destination aspect ratio
-    if aspect_ratio > dest_ratio:
-        new_width = int(original_height * dest_ratio)
-        new_height = original_height
-    else:
-        new_width = original_width
-        new_height = int(original_width / dest_ratio)
-
-    # Center the cropped area
-    left = (original_width - new_width) / 2
-    top = (original_height - new_height) / 2
-    right = (original_width + new_width) / 2
-    bottom = (original_height + new_height) / 2
-
-    # Crop and resize the image
-    cropped_image = image.crop((left, top, right, bottom)).resize((dest_width, dest_height), Image.Resampling.LANCZOS)
-    return cropped_image
-
-# Updated zoom_frame function with stabilization
 
 def zoom_frame(t, image, video_dest_width, video_dest_height, duration, zoom_dest=1.0):
     """
@@ -165,6 +163,46 @@ def zoom_frame(t, image, video_dest_width, video_dest_height, duration, zoom_des
     
     return np.array(resized_image)
 
+# Updated zoom_frame function with stabilization
+# def zoom_and_move_frame(t):
+#     global transition_span, zoom_dest, dest_width, dest_height, image_width, image_height, is_to_right
+    
+#     def _moving_average(curve, radius):
+#         window_size = 2 * radius + 1
+#         f = np.ones(window_size)/window_size
+#         curve_pad = np.lib.pad(curve, (radius, radius), 'edge')
+#         curve_smoothed = np.convolve(curve_pad, f, mode='same')
+#         return curve_smoothed[radius:-radius]
+    
+#     new_left = int((image_width - video_dest_width) * t / transition_span) # Moves from right to left
+#     if is_to_right:
+#         new_left = image_width - video_dest_width - new_left
+    
+#     zoom_image = src_image.crop( ( new_left, 0, new_left + dest_width, dest_height))
+#     croped_width, croped_height = zoom_image.size
+    
+#     # Calculate the zoom factor based on the zoom destination
+#     zoom_factor =  (t / transition_span) - (t / (zoom_dest * transition_span)) + (1 / zoom_dest) if zoom_dest > 1 else 1 - (1 - zoom_dest) * (t / transition_span)
+    
+#     # Apply moving average for stabilization
+#     zoom_factor_smoothed = _moving_average(np.array([zoom_factor]), radius=20)[0]
+    
+#     # Calculate new dimensions
+#     new_width = int(croped_width * zoom_factor_smoothed)
+#     new_height = int(croped_height * zoom_factor_smoothed)
+    
+#     # Center the cropped area
+#     left = (croped_width - new_width) / 2
+#     top = (croped_height - new_height) / 2
+#     right = left + new_width
+#     bottom = top + new_height
+    
+#     # Crop and resize the image
+#     cropped_image = zoom_image.crop((left, top, right, bottom))
+#     resized_image = cropped_image.resize((dest_width, dest_height), Image.Resampling.LANCZOS)
+    
+#     return np.array(resized_image)
+
 # Function to apply increasing blur over the last 0.4 seconds
 def apply_increasing_blur(get_frame, t):
     frame = get_frame(t)
@@ -172,9 +210,9 @@ def apply_increasing_blur(get_frame, t):
     time_left = max(0, clip_duration - t)
     if time_left <= blur_duration:
         # Calculate the strength of the blur based on the time left
-        blur_strength = int(((blur_duration - time_left) / blur_duration) * 50)  # Adjust the multiplier as needed
+        blur_strength = int(((blur_duration - time_left) / blur_duration) * 80)  # Adjust the multiplier as needed
         # Apply Gaussian blur using OpenCV
-        kernel = int(blur_strength) * 2 + 1
+        kernel = int(blur_strength) * 4 + 1
         frame = cv2.GaussianBlur(frame, (kernel, kernel), blur_strength)
     return frame
 
@@ -190,7 +228,6 @@ def apply_decreasing_blur(get_frame, t):
         kernel = blur_strength * 4 + 1  # Kernel size must be odd
         frame = cv2.GaussianBlur(frame, (kernel, kernel), blur_strength)
     return frame
-
 
 def get_video_timespan( idx):
     if idx == 1:
@@ -212,8 +249,6 @@ def get_video_length( idx):
     elif idx > 1 and idx < len(video_spans):
         return video_spans[idx - 1] + (transition_spans[idx - 2] + transition_spans[idx - 1]) / 2
     return 0
-    # return video_spans[idx-1]
-
 
 def get_closest_aspect_ratio(image, video_dest_width=video_dest_width, video_dest_height=video_dest_height):
     """
@@ -415,387 +450,24 @@ def sliding_frame(t, direction, image, video_dest_width, video_dest_height, dura
         raise ValueError("Invalid direction. Choose 'right', 'left', 'up', or 'down'.")
     
     return np.array(cropped_image)
-    
+
+
 # =================== GLOBAL Variable Declearation ============================
+# global transition_span, zoom_dest, dest_width, dest_height, image_width, image_height, is_to_right, foreground_x, foreground_y
+# ===================== 1. Zoom and Moving Left ===============================
+# Time: 0-2s
 
-global transition_span, zoom_dest, dest_width, dest_height, zoom_image
-global foreground_clip, foreground_width, foreground_height, foreground_x, foreground_y  
-
-# ================ 1. ZoomOut(Top) / avatar(Bottom) ===========================
-# Time 0-2s
-# Load the image and convert it to RGB
-image = Image.open(os.path.join(folder_path, "1.png")).convert("RGB")
-closest_ratio_name, _ = get_closest_aspect_ratio( image)
-
-duration = get_video_length( idx=1)
+clip_length = get_video_length( idx=1)
 clip_start, clip_end = get_video_timespan( idx=1)
 
-if closest_ratio_name == "Square":
-    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
-    upper_video_clip = VideoClip(
-            lambda t: zoom_frame(
-                t,
-                image=adjusted_image,
-                video_dest_width=video_dest_width,
-                video_dest_height=video_dest_height//2,
-                duration=duration,
-                zoom_dest= 1.3  # Target zoom level for final frame (e.g., <1 for zoom out)
-            ),
-            duration=duration
-        )
-elif closest_ratio_name == "Tall":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    upper_video_clip = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="down",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=duration,
-            scale = vertical_scale,
-            scale_direction = 'vertical'
-        ),
-        duration=duration
-    )
-elif closest_ratio_name == "Wide":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    upper_video_clip = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="left",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=duration,
-            scale = horizontal_scale,
-            scale_direction = 'horizontal'
-        ),
-        duration=duration
-    )
-else:
-    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
-
-lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
-
-# Stack the videos vertically
-composed_clip = clips_array([[upper_video_clip], [lower_video_clip]])
-
-blur_duration = get_transition_span( idx = 1)
-clip_duration = duration
-blurred_clip = composed_clip.fl(apply_increasing_blur)
-
-blurred_clip.subclip( 0, duration).write_videofile(f"{temp_folder}/01.mp4", codec="libx264", fps=video_fps)
-
-image.close()
-upper_video_clip.close()
-lower_video_clip.close()
-composed_clip.close()
-blurred_clip.close()
-
-# ================ 2. ZoomIn + avatar(Left) ===================================
-# Time 2-4s
-
-# Load the image and convert it to RGB
-image = Image.open(os.path.join(folder_path, "2.png")).convert("RGB")
+image = Image.open(os.path.join(folder_path, "1.png")).convert("RGB")
 closest_ratio_name, _ = get_closest_aspect_ratio( image)
-
-duration = get_video_length( idx=2)
-clip_start, clip_end = get_video_timespan( idx=2)
+# original_width, original_height = image.size
+# src_image = image.resize( ( int( original_width * video_dest_height / original_height) , video_dest_height))
 
 if closest_ratio_name == "Tall":
     adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name).resize((video_dest_width, video_dest_height))
-    background_clip = VideoClip(
-            lambda t: zoom_frame(
-                t,
-                image=adjusted_image,
-                video_dest_width=video_dest_width,
-                video_dest_height=video_dest_height,
-                duration=duration,
-                zoom_dest= 0.9  # Target zoom level for final frame (e.g., <1 for zoom out)
-            ),
-            duration=duration
-        )
-elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
-    background_clip = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="left",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height,
-            duration=duration,
-            scale = horizontal_scale,
-            scale_direction = 'horizontal'
-        ),
-        duration=duration
-    )
-else:
-    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
-
-
-# Set foreground speacker size to 60% of background video
-foreground_width = int(background_clip.size[0] * 0.6)
-
-# Apply the replace_green_background function to each frame of the
-# Deley for 2 seconds
-processed_clip = background_clip
-
-blur_duration = get_transition_span( idx = 1)
-blurred_clip = processed_clip.fl(apply_decreasing_blur)
-# Write the processed video to a file
-blurred_clip.subclip( 0, duration).write_videofile( f"{temp_folder}/02.mp4", codec="libx264", fps=video_fps)
-
-image.close()
-background_clip.close()
-processed_clip.close()
-blurred_clip.close()
-
-# ================ 3. ScreenCast + avatar(Center) =============================
-# Time 4-7s
-# video starts from 5s
-clip_length = get_video_length( idx=3)
-clip_start, clip_end = get_video_timespan( idx=3)
-
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(5, 5 + clip_length)
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.h * dest_ratio)
-    new_height = clip.h
-else:
-    new_width = clip.w
-    new_height = int(clip.w / dest_ratio)
-
-cropped_clip = clip.crop( 0,  102,  new_width, 102 + new_height).resize( (video_dest_width, video_dest_height))
-
-background_clip = cropped_clip.subclip( 0, clip_length)
-
-processed_clip = background_clip
-
-# Write the processed video to a file
-processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/03.mp4", codec="libx264", fps=video_fps)
-
-clip.close()
-cropped_clip.close()
-background_clip.close()
-processed_clip.close()
-
-# ================ 4. Moving left + avatar( Top-Center) =======================
-# Time 7-9s, 9-11s
-
-clip_length = get_video_length( idx=4)
-clip_start, clip_end = get_video_timespan( idx=4)
-
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(8, 5 + clip_length)
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.h * dest_ratio)
-    new_height = clip.h
-else:
-    new_width = clip.w
-    new_height = int(clip.w / dest_ratio)
-
-upper_video_clip = clip.crop( 0,  102,  new_width, 102 + new_height).resize( (video_dest_width, video_dest_height))
-
-image = Image.open(os.path.join(folder_path, "3.png")).convert("RGB")
-closest_ratio_name, _ = get_closest_aspect_ratio( image)
-duration = clip_length/2 + 0.2
-
-if closest_ratio_name == "Square":
-    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
-    lower_video_clip1 = VideoClip(
-            lambda t: zoom_frame(
-                t,
-                image=adjusted_image,
-                video_dest_width=video_dest_width,
-                video_dest_height=video_dest_height//2,
-                duration=duration,
-                zoom_dest= 1.5  # Target zoom level for final frame (e.g., <1 for zoom out)
-            ),
-            duration=duration
-        )
-elif closest_ratio_name == "Tall":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    lower_video_clip1 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="down",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=duration,
-            scale = vertical_scale,
-            scale_direction = 'vertical'
-        ),
-        duration=duration
-    )
-elif closest_ratio_name == "Wide":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    lower_video_clip1 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="left",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=duration,
-            scale = horizontal_scale,
-            scale_direction = 'horizontal'
-        ),
-        duration=duration
-    )
-else:
-    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
-    
-blur_duration = 0.4
-clip_duration = duration
-lower_blurred_clip1 = lower_video_clip1.fl(apply_increasing_blur)
-lower_blurred_clip1.write_videofile(f"{temp_folder}/04-1.mp4", codec="libx264", fps=video_fps)
-
-image.close()
-# move_image.close()
-
-image = Image.open(os.path.join(folder_path, "4.png")).convert("RGB")
-closest_ratio_name, _ = get_closest_aspect_ratio( image)
-duration = clip_length/2 + 0.2
-
-if closest_ratio_name == "Square":
-    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
-    lower_video_clip2 = VideoClip(
-            lambda t: zoom_frame(
-                t,
-                image=adjusted_image,
-                video_dest_width=video_dest_width,
-                video_dest_height=video_dest_height//2,
-                duration=duration,
-                zoom_dest= 0.67  # Target zoom level for final frame (e.g., <1 for zoom out)
-            ),
-            duration=duration
-        )
-elif closest_ratio_name == "Tall":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    lower_video_clip2 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="up",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=duration,
-            scale = vertical_scale,
-            scale_direction = 'vertical'
-        ),
-        duration=duration
-    )
-elif closest_ratio_name == "Wide":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    lower_video_clip2 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="right",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=duration,
-            scale = horizontal_scale,
-            scale_direction = 'horizontal'
-        ),
-        duration=duration
-    )
-else:
-    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")   
-
-blur_duration = 0.4
-clip_duration = duration
-lower_blurred_clip2 = lower_video_clip2.fl(apply_decreasing_blur)
-lower_blurred_clip2.write_videofile(f"{temp_folder}/04-2.mp4", codec="libx264", fps=video_fps)
-
-command = "ffmpeg-concat -T ../../../templates/template2/input/zoomin_transition.json -o 04_lower.mp4 04-1.mp4 04-2.mp4"
-
-try:
-    completed_process = subprocess.run(
-        command,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-        cwd=temp_folder
-    )
-    if completed_process.returncode == 0:
-        print("Command output:")
-        print(completed_process.stdout)
-        print("Command executed successfully.")
-    else:
-        print(f"command includes errors:  {completed_process.stderr}")
-except subprocess.CalledProcessError as e:
-    print(f"An error occurred while executing the command: {e.stderr}")
-
-lower_video_clip = VideoFileClip(f"{temp_folder}/04_lower.mp4").subclip( 0, clip_length)
-
-# add trasition
-def pop_from_bottom(t):
-    if t <= trans_duration:
-        new_height = int(video_dest_height * t // (2 * trans_duration))
-    else:
-        new_height = video_dest_height // 2 
-    global foreground_x, foreground_y, foreground_width, foreground_height
-    
-    foreground_y = video_dest_height // 2 - new_height
-    lower_frame = lower_video_clip.get_frame(t)
-    upper_frame = upper_video_clip.get_frame(t)
-    
-    cropped_image = lower_frame[:new_height, :video_dest_width]
-    
-    # Paste the cropped image onto the upper frame
-    upper_frame[video_dest_height - new_height:, :video_dest_width] = cropped_image
-    
-    return upper_frame
-
-trans_duration = 1/4
-
-processed_clip = VideoClip(pop_from_bottom, duration=4)
-
-blur_duration = get_transition_span( idx = 4)
-clip_duration = clip_length
-blurred_clip = processed_clip.fl(apply_increasing_blur)
-
-blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/04.mp4", codec="libx264", fps=video_fps)
-
-image.close()
-cropped_clip.close()
-upper_video_clip.close()
-lower_video_clip1.close()
-lower_video_clip2.close()
-lower_blurred_clip1.close()
-lower_blurred_clip2.close()
-lower_video_clip.close()
-processed_clip.close()
-blurred_clip.close()
-
-# ================ 5. ZoomIn + avatar( Left) ==================================
-# Time 11-14s
-
-clip_length = get_video_length( idx=5)
-clip_start, clip_end = get_video_timespan( idx=5)
-
-image = Image.open(os.path.join(folder_path, "5.png")).convert("RGB")
-closest_ratio_name, _ = get_closest_aspect_ratio( image)
-
-if closest_ratio_name == "Tall":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name).resize((video_dest_width, video_dest_height))
-    background_clip = VideoClip(
+    processed_clip = VideoClip(
             lambda t: zoom_frame(
                 t,
                 image=adjusted_image,
@@ -804,12 +476,12 @@ if closest_ratio_name == "Tall":
                 duration=clip_length,
                 zoom_dest= 0.9  # Target zoom level for final frame (e.g., <1 for zoom out)
             ),
-            duration=duration
+            duration=clip_length
         )
 elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
     adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
     horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
-    background_clip = VideoClip(
+    processed_clip = VideoClip(
         lambda t: sliding_frame(
             t,
             direction="left",  # 'left', 'up', or 'down' as needed
@@ -820,169 +492,76 @@ elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
             scale = horizontal_scale,
             scale_direction = 'horizontal'
         ),
-        duration=duration
+        duration=clip_length
     )
 else:
     raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
 
-# Set foreground speacker size to 60% of background video
-foreground_width = int(background_clip.size[0] * 0.6)
-
-foreground_x, foreground_y = 0, video_dest_height
-# Apply the replace_green_background function to each frame of the
-processed_clip = background_clip
-
-# Write the processed video to a file
-# processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/05.mp4", codec="libx264", fps=video_fps)
-
-blur_duration = get_transition_span( idx = 4)
+    
+blur_duration = get_transition_span( idx = 1)
 clip_duration = clip_length
-blurred_clip = processed_clip.fl(apply_decreasing_blur)
+blurred_clip = processed_clip.fl(apply_increasing_blur)
 
-blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/05.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, clip_length).write_videofile(f"{temp_folder}/01.mp4", codec="libx264", fps=video_fps)
 
 image.close()
-background_clip.close()
+# src_image.close()
 processed_clip.close()
 blurred_clip.close()
 
-# ================ 6. Full screen avatar video ================================
-# Time 14-16s
+# ===================== 2. Zoom and Moving Right ==============================
+# Time: 2-4s
 
-clip_length = get_video_length( idx=6)
-clip_start, clip_end = get_video_timespan( idx=6)
-
-avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start ,clip_end)
-avatar_clip.write_videofile(f"{temp_folder}/06.mp4", codec="libx264", fps=video_fps)
-avatar_clip.close()
-
-# ================ 7. Full screen avatar video ================================
-# Time 16-18.5s, 18.5-21
-
-clip_length = get_video_length( idx=7)
-clip_start, clip_end = get_video_timespan( idx=7)
-transition_span = clip_length/2 + 0.2
-
-image = Image.open(os.path.join(folder_path, "6.png")).convert("RGB")
+image = Image.open(os.path.join(folder_path, "2.png")).convert("RGB")
 closest_ratio_name, _ = get_closest_aspect_ratio( image)
-if closest_ratio_name == "Square":
-    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
-    upper_video_clip1 = VideoClip(
+
+clip_length = get_video_length( idx=2)
+clip_start, clip_end = get_video_timespan( idx=2)
+
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name).resize((video_dest_width, video_dest_height))
+    video_clip = VideoClip(
             lambda t: zoom_frame(
                 t,
                 image=adjusted_image,
                 video_dest_width=video_dest_width,
-                video_dest_height=video_dest_height//2,
-                duration=transition_span,
-                zoom_dest= 0.9  # Target zoom level for final frame (e.g., <1 for zoom out)
+                video_dest_height=video_dest_height,
+                duration=clip_length,
+                zoom_dest= 1.2  # Target zoom level for final frame (e.g., <1 for zoom out)
             ),
-            duration=duration
+            duration=clip_length
         )
-elif closest_ratio_name == "Tall":
+elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
     adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    upper_video_clip1 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="down",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=transition_span,
-            scale = vertical_scale,
-            scale_direction = 'vertical'
-        ),
-        duration=duration
-    )
-elif closest_ratio_name == "Wide":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    upper_video_clip1 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="left",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=transition_span,
-            scale = horizontal_scale,
-            scale_direction = 'horizontal'
-        ),
-        duration=duration
-    )
-else:
-    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")    
-
-blur_duration = 0.4
-clip_duration = transition_span
-upper_blurred_clip1 = upper_video_clip1.fl(apply_increasing_blur)
-upper_blurred_clip1.write_videofile(f"{temp_folder}/07-1.mp4", fps=video_fps)
-
-image.close()
-
-# for 7_2
-image = Image.open(os.path.join(folder_path, "7.png")).convert("RGB")
-closest_ratio_name, _ = get_closest_aspect_ratio( image)
-
-transition_span = clip_length/2 + 0.2
-
-if closest_ratio_name == "Square":
-    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
-    upper_video_clip2 = VideoClip(
-            lambda t: zoom_frame(
-                t,
-                image=adjusted_image,
-                video_dest_width=video_dest_width,
-                video_dest_height=video_dest_height//2,
-                duration=transition_span,
-                zoom_dest= 1.1  # Target zoom level for final frame (e.g., <1 for zoom out)
-            ),
-            duration=duration
-        )
-elif closest_ratio_name == "Tall":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    upper_video_clip2 = VideoClip(
-        lambda t: sliding_frame(
-            t,
-            direction="up",  # 'left', 'up', or 'down' as needed
-            image=adjusted_image,
-            video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=transition_span,
-            scale = vertical_scale,
-            scale_direction = 'vertical'
-        ),
-        duration=duration
-    )
-elif closest_ratio_name == "Wide":
-    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
-    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
-    upper_video_clip2 = VideoClip(
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    video_clip = VideoClip(
         lambda t: sliding_frame(
             t,
             direction="right",  # 'left', 'up', or 'down' as needed
             image=adjusted_image,
             video_dest_width=video_dest_width,
-            video_dest_height=video_dest_height//2,
-            duration=transition_span,
+            video_dest_height=video_dest_height,
+            duration=clip_length,
             scale = horizontal_scale,
             scale_direction = 'horizontal'
         ),
-        duration=duration
+        duration=clip_length
     )
 else:
     raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
+ 
+blur_duration = get_transition_span( idx = 1)
+blurred_clip = video_clip.fl(apply_decreasing_blur)
+# Write the processed video to a file
+blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/02.mp4", codec="libx264", fps=video_fps)
 
+image.close()
+# src_image.close()
+video_clip.close()
+blurred_clip.close()
 
-blur_duration = 0.4
-clip_duration = transition_span
-upper_blurred_clip2 = upper_video_clip2.fl(apply_decreasing_blur)
-
-upper_blurred_clip2.write_videofile(f"{temp_folder}/07-2.mp4", fps=video_fps)
-
-# command = f'"C:\\Program Files\\FFmpeg\\ffmpeg.exe" -i 07-1.mp4 -i 07-2.mp4 -filter_complex "[0][1]xfade=transition=zoomin:duration=0.4:offset={clip_length/2-0.2},format=yuv420p" 07_upper.mp4'
-command = "ffmpeg-concat -T ../../../templates/template2/input/zoomin_transition.json -o 07_upper.mp4 07-1.mp4 07-2.mp4"
+# Concatenate video 1 and video 2
+command = f"ffmpeg-concat -t SimpleZoom -d {int(transition_spans[0]*1000)} -o 01-02-back.mp4 01.mp4 02.mp4"
 
 try:
     completed_process = subprocess.run(
@@ -1002,68 +581,208 @@ try:
         print(f"command includes errors:  {completed_process.stderr}")
 except subprocess.CalledProcessError as e:
     print(f"An error occurred while executing the command: {e.stderr}")
-
-upper_video_clip = VideoFileClip(f"{temp_folder}/07_upper.mp4").subclip( 0, clip_length)
-
-lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
-
-# Stack the videos vertically
-final_clip = clips_array([[upper_video_clip], [lower_video_clip]])
-# final_clip.write_videofile(f"{temp_folder}/08.mp4", codec="libx264")
-
-# Add transition
-def drop_from_top(t):
-    if t <= transition_span:
-        new_height = int(video_dest_height * t // (2 * transition_span))
-        nu_height = int(video_dest_height * t // (3 * transition_span)) + video_dest_height//6
-    else:
-        new_height = video_dest_height // 2
-        nu_height = video_dest_height // 2
-    lower_frame = lower_video_clip.get_frame(t)
-    upper_frame = upper_video_clip.get_frame(t)
-    rest_frame = back_frame_clip.get_frame(t)
-
-    back_frame[ :new_height, :video_dest_width] = upper_frame[video_dest_height//2-new_height:video_dest_height//2, :video_dest_width]
-    back_frame[ nu_height:nu_height + video_dest_height//2,] = lower_frame
-    back_frame[ new_height:nu_height,] = rest_frame[video_dest_height//6-(nu_height - new_height):video_dest_height//6]
-    back_frame[ nu_height + video_dest_height//2:,] = rest_frame[video_dest_height*2//3:video_dest_height*7//6-nu_height]
     
-    return back_frame
+background_clip = VideoFileClip(f"{temp_folder}/01-02-back.mp4")
 
-back_frame = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).get_frame( clip_start).copy()
 
-transition_span = 1/4
+processed_clip = background_clip
 
-back_frame_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_start + transition_span)
-processed_clip = VideoClip(drop_from_top, duration=5)
-
-blur_duration = get_transition_span( idx = 7)
-clip_duration = clip_length
+blur_duration = get_transition_span( idx = 2)
+clip_duration = processed_clip.duration
 blurred_clip = processed_clip.fl(apply_increasing_blur)
 
-blurred_clip.subclip(0, clip_length).write_videofile(f"{temp_folder}/07.mp4", codec="libx264", fps=video_fps)
+blurred_clip.write_videofile( f"{temp_folder}/01-02.mp4", codec="libx264", fps=video_fps)
 
-image.close()
-# zoom_image.close()
-upper_video_clip1.close()
-upper_video_clip2.close()
-upper_blurred_clip1.close()
-upper_blurred_clip2.close()
-upper_video_clip.close()
-lower_video_clip.close()
+background_clip.close() 
+processed_clip.close()
+blurred_clip.close()
+# ===================== 3. Smoothly Emerge and Disappear ======================
+# Time: 4-7s
+
+clip_length = get_video_length( idx=3)
+clip_start, clip_end = get_video_timespan( idx=3)
+
+background_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end)
+foreground_clip_orignal = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(0, clip_length)
+# Resize foreground video to match background video dimensions
+foreground_clip_cropped = foreground_clip_orignal.crop( 0, 110, foreground_clip_orignal.w, foreground_clip_orignal.h - 200)
+foreground_clip = foreground_clip_cropped.resize( ( background_clip.w * 0.4, background_clip.w * 0.4 / foreground_clip_cropped.w * foreground_clip_cropped.h))
+
+# Set paramters for appearance_effect
+transition_span = 0.3
+left_offest = 0
+
+# Apply effect
+processed_clip = VideoClip(appearance_effect, duration=clip_length)
+
+blur_duration = get_transition_span( idx = 2)
+blurred_clip = processed_clip.fl(apply_decreasing_blur)
+
+# Write the final video to a file
+blurred_clip.write_videofile(f"{temp_folder}/03.mp4", codec="libx264", fps=video_fps)
+
+background_clip.close()
+foreground_clip_orignal.close()
+foreground_clip_cropped.close()
+foreground_clip.close()
+processed_clip.close()
 blurred_clip.close()
 
-# ================ 8. ZoomIn + avatar(right) =================================
-# Time 21-26s
+# ===================== 4. Smoothly Emerge and Disappear Zoomming In 2 Videos ====
+# Time: 7-11s
 
-clip_length = get_video_length( idx=8)
-clip_start, clip_end = get_video_timespan( idx=8)
-
-# Load the image and convert it to RGB
-image = Image.open(os.path.join(folder_path, "8.png")).convert("RGB")
+image = Image.open(os.path.join(folder_path, "3.png")).convert("RGB")
 closest_ratio_name, _ = get_closest_aspect_ratio( image)
 
-transition_span = clip_length
+clip_length = get_video_length( idx=4)
+clip_start, clip_end = get_video_timespan( idx=4)
+
+background_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end)
+
+if closest_ratio_name == "Square":
+    adjusted_image = resize_with_scaled_target(image, target="Tall").resize((video_dest_width * 2 // 5, video_dest_height * 2 // 5))
+    fore_clip1  = VideoClip(
+            lambda t: zoom_frame(
+                t,
+                image=adjusted_image,
+                video_dest_width=video_dest_width * 2 // 5,
+                video_dest_height=video_dest_height * 2 // 5,
+                duration=clip_length,
+                zoom_dest= 0.7  # Target zoom level for final frame (e.g., <1 for zoom out)
+            ),
+            duration=clip_length
+        )
+elif closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name, scale=1.2, scale_direction="height")
+    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    fore_clip1  = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="down",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width * 2 // 5,
+            video_dest_height=video_dest_height * 2 // 5,
+            duration=clip_length,
+            scale = vertical_scale * 1.2,
+            scale_direction = 'vertical'
+        ),
+        duration=clip_length
+    )
+elif closest_ratio_name == "Wide":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    fore_clip1  = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="left",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width * 2 // 5,
+            video_dest_height=video_dest_height * 2 // 5,
+            duration=clip_length,
+            scale = horizontal_scale,
+            scale_direction = 'horizontal'
+        ),
+        duration=clip_length
+    )
+else:
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
+
+fore_clip1.write_videofile(f"{temp_folder}/04-1.mp4", codec="libx264", fps=video_fps)
+
+image.close()
+fore_clip1.close()
+
+image = Image.open(os.path.join(folder_path, "4.png")).convert("RGB")
+closest_ratio_name, _ = get_closest_aspect_ratio( image)
+
+if closest_ratio_name == "Square":
+    adjusted_image = resize_with_scaled_target(image, target="Tall").resize((video_dest_width * 2 // 5, video_dest_height * 2 // 5))
+    fore_clip2  = VideoClip(
+            lambda t: zoom_frame(
+                t,
+                image=adjusted_image,
+                video_dest_width=video_dest_width * 2 // 5,
+                video_dest_height=video_dest_height * 2 // 5,
+                duration=clip_length,
+                zoom_dest= 0.7  # Target zoom level for final frame (e.g., <1 for zoom out)
+            ),
+            duration=clip_length
+        )
+elif closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name, scale=1.2, scale_direction="height")
+    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    fore_clip2  = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="down",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width * 2 // 5,
+            video_dest_height=video_dest_height * 2 // 5,
+            duration=clip_length,
+            scale = 1.2 * vertical_scale,
+            scale_direction = 'vertical'
+        ),
+        duration=clip_length
+    )
+elif closest_ratio_name == "Wide":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    fore_clip2  = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="right",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width * 2 // 5,
+            video_dest_height=video_dest_height * 2 // 5,
+            duration=clip_length,
+            scale = horizontal_scale,
+            scale_direction = 'horizontal'
+        ),
+        duration=clip_length
+    )
+else:
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
+
+fore_clip2.write_videofile(f"{temp_folder}/04-2.mp4", codec="libx264", fps=video_fps)
+
+image.close()
+adjusted_image.close()
+fore_clip1.close()
+
+foreground_clip = VideoFileClip(f"{temp_folder}/04-1.mp4")
+
+transition_span = 0.3
+left_offest = -video_dest_width // 4
+processed_clip = VideoClip(appearance_effect, duration=clip_length)
+processed_clip.write_videofile(f"{temp_folder}/04-3.mp4", codec="libx264", fps=video_fps)
+
+foreground_clip.close()
+processed_clip.close()
+
+foreground_clip = VideoFileClip(f"{temp_folder}/04-2.mp4")
+background_clip =  VideoFileClip(f"{temp_folder}/04-3.mp4")
+transition_span = 0.3
+left_offest = video_dest_width // 4
+processed_clip = VideoClip(appearance_effect, duration=clip_length)
+
+blur_duration = get_transition_span( idx = 4)
+clip_duration = clip_length
+blurred_clip = processed_clip.fl(apply_increasing_blur)
+# Write the processed video to a file
+blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/04.mp4", codec="libx264", fps=video_fps)
+
+foreground_clip.close()
+background_clip.close()
+processed_clip.close()
+blurred_clip.close()
+
+# ===================== 5. Zoomming In Video ==================================
+# Time: 11-15s
+image = Image.open(os.path.join(folder_path, "5.png")).convert("RGB")
+closest_ratio_name, _ = get_closest_aspect_ratio( image)
+
+clip_length = get_video_length( idx=5)
+clip_start, clip_end = get_video_timespan( idx=5)
 
 if closest_ratio_name == "Tall":
     adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name).resize((video_dest_width, video_dest_height))
@@ -1073,10 +792,10 @@ if closest_ratio_name == "Tall":
                 image=adjusted_image,
                 video_dest_width=video_dest_width,
                 video_dest_height=video_dest_height,
-                duration=transition_span,
-                zoom_dest= 0.9  # Target zoom level for final frame (e.g., <1 for zoom out)
+                duration=clip_length,
+                zoom_dest= 1.2  # Target zoom level for final frame (e.g., <1 for zoom out)
             ),
-            duration=duration
+            duration=clip_length
         )
 elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
     adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
@@ -1088,102 +807,274 @@ elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
             image=adjusted_image,
             video_dest_width=video_dest_width,
             video_dest_height=video_dest_height,
-            duration=transition_span,
+            duration=clip_length,
             scale = horizontal_scale,
             scale_direction = 'horizontal'
         ),
-        duration=duration
+        duration=clip_length
     )
 else:
-    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
-# Create the video clip using the modified zoom_in_frame function
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")     
 
-# Set foreground speacker size to 60% of background video
-foreground_width = int(background_clip.size[0] * 0.6)
 
-foreground_x, foreground_y = video_dest_width - foreground_width, video_dest_height
-# Apply the replace_green_background function to each frame of the
 processed_clip = background_clip
 
-blur_duration = get_transition_span( idx = 7)
-blurred_clip = processed_clip.fl(apply_decreasing_blur)
+blur_duration = get_transition_span( idx = 4)
+blurred_start_clip = processed_clip.fl(apply_decreasing_blur)
 
+blur_duration = get_transition_span( idx = 5)
+clip_duration = clip_length
+blurred_clip = blurred_start_clip.fl(apply_increasing_blur)
 # Write the processed video to a file
-blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/08.mp4", codec="libx264", fps=video_fps)
+blurred_clip.subclip( 0, clip_duration).write_videofile( f"{temp_folder}/05.mp4", codec="libx264", fps=video_fps)
 
 image.close()
-background_clip.close()
+adjusted_image.close()
+processed_clip.close()
+blurred_start_clip.close()
+blurred_clip.close()
+
+# ===================== 6. Zoomming In Video ==================================
+# Time: 15-18s
+
+image = Image.open(os.path.join(folder_path, "6.png")).convert("RGB")
+closest_ratio_name, _ = get_closest_aspect_ratio( image)
+
+clip_length = get_video_length( idx=6)
+clip_start, clip_end = get_video_timespan( idx=6)
+
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name).resize((video_dest_width, video_dest_height))
+    processed_clip = VideoClip(
+            lambda t: zoom_frame(
+                t,
+                image=adjusted_image,
+                video_dest_width=video_dest_width,
+                video_dest_height=video_dest_height,
+                duration=clip_length,
+                zoom_dest= 0.8  # Target zoom level for final frame (e.g., <1 for zoom out)
+            ),
+            duration=clip_length
+        )
+elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    processed_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="right",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=clip_length,
+            scale = horizontal_scale,
+            scale_direction = 'horizontal'
+        ),
+        duration=clip_length
+    )
+else:
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")     
+
+
+blur_duration = get_transition_span( idx = 5)
+blurred_start_clip = processed_clip.fl(apply_decreasing_blur)
+
+blur_duration = get_transition_span( idx = 6)
+clip_duration = clip_length
+blurred_clip = blurred_start_clip.fl(apply_increasing_blur)
+
+# Write the processed video to a file
+blurred_clip.subclip( 0, clip_length).write_videofile( f"{temp_folder}/06.mp4", codec="libx264", fps=video_fps)
+
+image.close()
+adjusted_image.close()
+processed_clip.close()
+blurred_start_clip.close()
+blurred_clip.close()
+
+# ===================== 7. Zoomming Out Video ==================================
+# Time: 18-21
+
+image = Image.open(os.path.join(folder_path, "7.png")).convert("RGB")
+closest_ratio_name, _ = get_closest_aspect_ratio( image)
+
+clip_length = get_video_length( idx=7)
+clip_start, clip_end = get_video_timespan( idx=7)
+
+if closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name).resize((video_dest_width, video_dest_height))
+    processed_clip = VideoClip(
+            lambda t: zoom_frame(
+                t,
+                image=adjusted_image,
+                video_dest_width=video_dest_width,
+                video_dest_height=video_dest_height,
+                duration=clip_length,
+                zoom_dest= 1.2  # Target zoom level for final frame (e.g., <1 for zoom out)
+            ),
+            duration=clip_length
+        )
+elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Tall")
+    processed_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="left",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height,
+            duration=clip_length,
+            scale = horizontal_scale,
+            scale_direction = 'horizontal'
+        ),
+        duration=clip_length
+    )
+else:
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")     
+
+
+# processed_clip.write_videofile(f"{temp_folder}/07.mp4", codec="libx264", fps=video_fps)
+
+blur_duration = get_transition_span( idx = 6)
+blurred_clip = processed_clip.fl(apply_decreasing_blur)
+
+blurred_clip.crop(0, 0, video_dest_width, video_dest_height//2).write_videofile(f"{temp_folder}/07-1.mp4", codec="libx264", fps=video_fps)
+blurred_clip.crop(0, video_dest_height//2, video_dest_width, video_dest_height).write_videofile(f"{temp_folder}/07-2.mp4", codec="libx264", fps=video_fps)
+
+image.close()
+adjusted_image.close()
 processed_clip.close()
 blurred_clip.close()
 
-# ================ 09. Full screen avatar video ===============================
-# Time 26-30s
+# ===================== 8. Moving Left and Right Videos =======================
+# Time: 21-24
 
-clip_length = get_video_length( idx=9)
-clip_start, clip_end = get_video_timespan( idx=9)
+clip_length = get_video_length( idx=8)
+clip_start, clip_end = get_video_timespan( idx=8)
 
-clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
-clip_end = clip.duration
+image = Image.open(os.path.join(folder_path, "8.png")).convert("RGB")
+closest_ratio_name, _ = get_closest_aspect_ratio( image)
 
-avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end)
-avatar_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True, codec="libx264", fps=video_fps)
-avatar_clip.close()
-
-# ================ 10. Blur video ===============================
-# Time 30-35s
-
-clip_length = get_video_length( idx=10)
-clip_start, clip_end = get_video_timespan( idx=10)
-action_delay = 1.5
-
-def blur_frame(frame):
-    return cv2.GaussianBlur(frame, (51, 51), 10)
-
-blur_amount = 3
-
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(10, 10+clip_length)
-aspect_ratio = clip.w / clip.h
-dest_ratio = video_dest_width / video_dest_height
-
-if aspect_ratio > dest_ratio:
-    new_width = int(clip.h * dest_ratio)
-    new_height = clip.h
+if closest_ratio_name == "Square":
+    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
+    upper_video_clip = VideoClip(
+            lambda t: zoom_frame(
+                t,
+                image=adjusted_image,
+                video_dest_width=video_dest_width,
+                video_dest_height=video_dest_height//2,
+                duration=clip_length,
+                zoom_dest= 1.3  # Target zoom level for final frame (e.g., <1 for zoom out)
+            ),
+            duration=clip_length
+        )
+elif closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
+    upper_video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="down",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height//2,
+            duration=clip_length,
+            scale = vertical_scale,
+            scale_direction = 'vertical'
+        ),
+        duration=clip_length
+    )
+elif closest_ratio_name == "Wide":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
+    upper_video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="left",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height//2,
+            duration=clip_length,
+            scale = horizontal_scale,
+            scale_direction = 'horizontal'
+        ),
+        duration=clip_length
+    )
 else:
-    new_width = clip.w
-    new_height = int(clip.w / dest_ratio)
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
 
-cropped_clip = clip.crop( 0,  102,  new_width, 102+new_height).resize( (video_dest_width, video_dest_height))
-background_clip = cropped_clip.fl_image(blur_frame)
 
-foreground_clip = VideoFileClip(os.path.join(folder_path, "action.mp4")).subclip( 0, clip_length - action_delay)
+upper_video_clip.write_videofile(f"{temp_folder}/08-1.mp4", codec="libx264", fps=video_fps)
+# video_clip.close()
 
-foreground_width = background_clip.size[0]
-foreground_height = int( foreground_clip.size[1] * foreground_width / foreground_clip.size[0])
-foreground_clip = foreground_clip.resize((foreground_width, foreground_height))
+image.close()
+adjusted_image.close()
 
-foreground_x = 0
-foreground_y = (background_clip.size[1] - foreground_height) // 2
 
-processed_clip =  concatenate_videoclips([ background_clip.subclip( 0, action_delay)
-                                          , background_clip.subclip( action_delay, background_clip.duration).fl(lambda gf, t: add_foreground(gf(t), t))])
+image = Image.open(os.path.join(folder_path, "9.png")).convert("RGB")
+if closest_ratio_name == "Square":
+    adjusted_image = resize_with_scaled_target(image, target="Half").resize((video_dest_width, video_dest_height //2))
+    lower_video_clip = VideoClip(
+            lambda t: zoom_frame(
+                t,
+                image=adjusted_image,
+                video_dest_width=video_dest_width,
+                video_dest_height=video_dest_height//2,
+                duration=clip_length,
+                zoom_dest= 0.8  # Target zoom level for final frame (e.g., <1 for zoom out)
+            ),
+            duration=clip_length
+        )
+elif closest_ratio_name == "Tall":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    _,vertical_scale = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
+    lower_video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="up",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height//2,
+            duration=clip_length,
+            scale = vertical_scale,
+            scale_direction = 'vertical'
+        ),
+        duration=clip_length
+    )
+elif closest_ratio_name == "Wide":
+    adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
+    horizontal_scale,_ = get_aspect_ratio_conversion( source_name=closest_ratio_name, target_name="Half")
+    lower_video_clip = VideoClip(
+        lambda t: sliding_frame(
+            t,
+            direction="right",  # 'left', 'up', or 'down' as needed
+            image=adjusted_image,
+            video_dest_width=video_dest_width,
+            video_dest_height=video_dest_height//2,
+            duration=clip_length,
+            scale = horizontal_scale,
+            scale_direction = 'horizontal'
+        ),
+        duration=clip_length
+    )
+else:
+    raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
 
-# Write the processed video to a file
-processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/10.mp4", codec="libx264", fps=video_fps)
+lower_video_clip.write_videofile(f"{temp_folder}/08-2.mp4", codec="libx264", fps=video_fps)
+# video_clip.close()
 
-background_clip.close()
-foreground_clip.close()
-processed_clip.close()
 
-# =============================================================================
-# =========================  Concantenate Videos  =============================
-# =============================================================================
+image.close()
+adjusted_image.close()
+upper_video_clip.close()
+lower_video_clip.close()
 
-video9 = VideoFileClip(f"{temp_folder}/09.mp4")
+# Concatenate Video 7 & 8
 
 commands = [
-    f'ffmpeg -i 02.mp4 -i 03.mp4 -filter_complex "[0][1]xfade=transition=slideup:duration={get_transition_span(idx=2)}:offset={video_spans[1]},format=yuv420p" 02-03.mp4',
-    f'ffmpeg -i 05.mp4 -i 06.mp4 -filter_complex "[0][1]xfade=transition=slideleft:duration={get_transition_span(idx=5)}:offset={video_spans[4]},format=yuv420p" 05-06.mp4',
-    f'ffmpeg -i 09.mp4 -i 10.mp4 -filter_complex "[0][1]xfade=transition=slideleft:duration={get_transition_span(idx=9)}:offset={video9.duration - get_transition_span(idx=9)},format=yuv420p" 09-10.mp4',
+    f'ffmpeg -i 07-1.mp4 -i 08-1.mp4 -filter_complex "[0][1]xfade=transition=wipeleft:duration={get_transition_span(idx=7)}:offset={video_spans[6]},format=yuv420p" 07-08-1.mp4',
+    f'ffmpeg -i 07-2.mp4 -i 08-2.mp4 -filter_complex "[0][1]xfade=transition=revealright:duration={get_transition_span(idx=7)}:offset={video_spans[6]},format=yuv420p" 07-08-2.mp4',
 ]
 
 # Execute each command in the temp folder
@@ -1206,16 +1097,102 @@ for command in commands:
             print(f"command includes errors:  {completed_process.stderr}")
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while executing the command: {e.stderr}")
+        
+upper_video_clip = VideoFileClip(f"{temp_folder}/07-08-1.mp4")
+lower_video_clip = VideoFileClip(f"{temp_folder}/07-08-2.mp4")
+composed_clip = clips_array([[upper_video_clip], [lower_video_clip]])
+
+blur_duration = get_transition_span( idx = 8)
+clip_duration = composed_clip.duration
+blurred_clip = composed_clip.fl(apply_increasing_blur)
+
+blurred_clip.write_videofile(f"{temp_folder}/07-08.mp4", codec="libx264", fps=video_fps)
+
+upper_video_clip.close()
+lower_video_clip.close()
+composed_clip.close()
+blurred_clip.close()
+# ===================== 9. Zoomming Out Video ==================================
+# Time: 24-29
+clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
+clip_length = get_video_length( idx=9)
+clip_start, clip_end = get_video_timespan( idx=9)
+
+clip_end = clip.duration
+
+avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end)
+
+blur_duration = get_transition_span( idx = 8)
+blurred_start_clip = avatar_clip.fl(apply_decreasing_blur)
+
+blur_duration = get_transition_span( idx = 9)
+clip_duration = avatar_clip.duration
+blurred_clip = blurred_start_clip.fl(apply_increasing_blur)
+
+blurred_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True,codec="libx264", fps=video_fps)
+avatar_clip.close()
+blurred_start_clip.close()
+blurred_clip.close()
+
+# ================ 10. Blur video ===============================
+# Time 29-35s
+
+clip_length = get_video_length( idx=10)
+clip_start, clip_end = get_video_timespan( idx=10)
+
+action_delay = 1
+
+def blur_frame(frame):
+    return cv2.GaussianBlur(frame, (51, 51), 10)
+
+blur_amount = 3
+
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(8, 8+clip_length)
+aspect_ratio = clip.w / clip.h
+dest_ratio = video_dest_width / video_dest_height
+
+if aspect_ratio > dest_ratio:
+    new_width = int(clip.h * dest_ratio)
+    new_height = clip.h
+else:
+    new_width = clip.w
+    new_height = int(clip.w / dest_ratio)
+
+cropped_clip = clip.crop( 0,  102,  new_width, 102+new_height).resize( (video_dest_width, video_dest_height))
+background_clip = cropped_clip.fl_image(blur_frame)
+
+foreground_clip = VideoFileClip(os.path.join(folder_path, "action.mp4")).subclip( 0, clip_length - action_delay)
+
+foreground_width = background_clip.size[0]
+foreground_height = int( foreground_clip.size[1] * foreground_width / foreground_clip.size[0])
+foreground_clip = foreground_clip.resize((foreground_width, foreground_height))
+
+foreground_x = 0
+foreground_y = (background_clip.size[1] - foreground_height) // 2
+
+processed_clip =  concatenate_videoclips([ cropped_clip.subclip( 0, background_clip.duration - foreground_clip.duration)
+                                          , background_clip.subclip( background_clip.duration - foreground_clip.duration, background_clip.duration).fl(lambda gf, t: add_foreground(gf(t), t, foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height))])
+
+blur_duration = get_transition_span( idx = 9)
+blurred_clip = processed_clip.fl(apply_decreasing_blur)
+# Write the processed video to a file
+blurred_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/10.mp4", codec="libx264", fps=video_fps)
+
+background_clip.close()
+foreground_clip.close()
+processed_clip.close()
+blurred_clip.close()
+
+# =============================================================================
+# ====================  Concantenate  Background Videos  ======================
+# =============================================================================
 
 
-video_clip_names = ['01.mp4', '02-03.mp4', '04.mp4', '05-06.mp4', '07.mp4', '08.mp4', '09-10.mp4']
+video_clip_names = ['01-02.mp4', '03.mp4', '04.mp4', '05.mp4', '06.mp4', '07-08.mp4', '09.mp4', '10.mp4']
 
-#for each video clip, add the path to the temp folder
-video_clip_names = [os.path.join(temp_folder, clip) for clip in video_clip_names]
-background_video = os.path.join(temp_folder, 'background_video.mp4')
-
-command = ['ffmpeg-concat', '-T', "./templates/template2/input/transition.json",
-           '-o', background_video] + video_clip_names
+background_video = "background_video.mp4"
+command = ['ffmpeg-concat', '-T', "../../../templates/template3/input/transition.json",
+            '-o', background_video] + video_clip_names
 try:
     completed_process = subprocess.run(
         " ".join(command),
@@ -1223,7 +1200,8 @@ try:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=True,
-        text=True)
+        text=True,
+        cwd=temp_folder)
     if completed_process.returncode == 0:
         print("Command output:")
         print(completed_process.stdout)
@@ -1234,9 +1212,20 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Error executing command: {e}")
 
+# =============================================================================
+# ======================  Add Foreground Video(Avatar)  =======================
+# =============================================================================
+
+
+background_clip = VideoFileClip(f"{temp_folder}/background_video.mp4")
+processed_clips = []
+
+processed_clip = background_clip.subclip(15, 21)
+final_clip = concatenate_videoclips([background_clip.subclip(0, 15), processed_clip, background_clip.subclip(21, background_clip.duration)])
+final_clip.write_videofile( f"{temp_folder}/overlapped_video.mp4", codec="libx264", fps=video_fps)
 
 for file_name in os.listdir(temp_folder):
     file_path = os.path.join(temp_folder, file_name)
 
-    if file_name != "background_video.mp4":
+    if file_name != "overlapped_video.mp4":
         os.remove(file_path)
