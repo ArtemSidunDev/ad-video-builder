@@ -18,6 +18,26 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
+app.post('/voice/:templateName', async (req, res) => {
+  try {
+    const templateName = req.params.templateName;
+    
+    handler.handleVoice(templateName, req.body);
+    
+    res.send({
+      message: 'Processing request',
+      status: 'ok'
+    });
+  }
+  catch (error) {
+    console.log(error);
+    res.send({
+      message: 'Processing request error',
+      error: error
+    });
+  }
+});
+
 app.post('/:templateName', async (req, res) => {
   try {
     const templateName = req.params.templateName;

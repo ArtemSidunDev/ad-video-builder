@@ -6,8 +6,8 @@ import moviepy.audio.fx.all as afx
 import os
 import shutil
 import math
-from PIL import Image, ImageDraw
 import argparse
+from PIL import Image, ImageDraw
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
@@ -15,26 +15,25 @@ args = parser.parse_args()
 
 folder_path = args.folderPath
 
-# API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
-FONT = "./templates/template1/input/ProximaNova-Black.ttf"
+FONT = "./templates/template2/input/ProximaNova-Black.ttf"
 FONT_SIZE = 80
 FONT_COLOR = "#FFFFFF"
 FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#D2042D"
+FONT_HIGHLIGHT_COLOR = "#D0AA3A"
 FONT_OUTLINE_WIDTH = 4
-FONT_MARGIN = 20
 HIGHLIGHT_RADIUS = 21
-
+FONT_MARGIN = 20
 video_dest_width = 1216
 video_dest_height = 2160
 
-foreground_audio = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).audio
+voice_audio = AudioFileClip(os.path.join(folder_path, "voice.mp3")).fx(afx.audio_normalize).fx(afx.volumex, 0.8)
 
 temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
     os.makedirs(temp_folder)
+    
 
-with open(os.path.join(folder_path, "transcription.json"), 'r') as f:
+with open(os.path.join(folder_path, 'transcription.json'), 'r') as f:
     wordlevel_info = json.load(f)
 
 def get_sentences_from_words(word_list):
@@ -69,7 +68,7 @@ def get_sentences_from_words(word_list):
 
 def split_text_into_lines(word_list):
     subtitles = []
-    
+
     sentences = get_sentences_from_words(word_list)
     
     for data in sentences:
@@ -215,28 +214,24 @@ def create_caption(
         # Center the line horizontally
         centered_x_pos = (frame_width - line_widths[current_line]) / 2 + word_info['x_pos']
         move_text_up_time_ranges = [
-            # [0, 3.5],
-            # [14.9, 20]
         ]
         if is_in_range(textJSON['start'], move_text_up_time_ranges):
             start_y_pos = frame_height * 0.30
         word_clip = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH).set_start( textJSON['start']).set_duration( full_duration)
         word_clip = word_clip.set_position((centered_x_pos, start_y_pos + word_info['y_pos'] * 0.8))
         word_clips.append(word_clip)
-
-        word_clip_temp = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR)        
-        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR, size=(word_clip_temp.w + FONT_MARGIN,word_clip_temp.h), method="caption")
+        
+        word_clip_temp = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR)
+        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR, size=(word_clip_temp.w+FONT_MARGIN,word_clip_temp.h), method="caption")
         mask_image = Image.new("RGB", (word_clip_highlight.w, word_clip_highlight.h), 0)
         draw = ImageDraw.Draw(mask_image)
         draw.rounded_rectangle(
             [(0, 0), (word_clip_highlight.w, word_clip_highlight.h)],
-            radius = HIGHLIGHT_RADIUS,
+            radius=HIGHLIGHT_RADIUS,
             fill=255
         )
         mask_clip = ImageClip(np.array(mask_image), ismask=True).set_duration(word_info['duration'])
-                
         word_clip_highlight = word_clip_highlight.set_mask(mask_clip).set_start(word_info['start']).set_duration(word_info['duration'])
-        
         word_clip_highlight = word_clip_highlight.set_position( ( centered_x_pos-FONT_MARGIN//2, start_y_pos + word_info['y_pos'] * 0.8))       
         word_clips.append(word_clip_highlight)
         
@@ -259,46 +254,40 @@ input_video_duration = input_video.duration
 # also change frame_size, font size and color accordingly.
 final_video = CompositeVideoClip([input_video] + all_linelevel_splits)
 
-# Set the audio of the final video to be the same as the input video
+camera_audio = AudioFileClip("./templates/template2/input/camera.mp3").subclip(0.4, 0.8).fx(afx.audio_normalize).fx(afx.volumex, 0.5)
+transition_audio = AudioFileClip("./templates/template2/input/transition.wav").subclip(0, 0.4).fx(afx.audio_normalize).fx(afx.volumex, 0.3)
 
-voice_audio = AudioFileClip(os.path.join(folder_path, "voice.mp3")).fx(afx.audio_normalize).fx(afx.volumex, 0.8)
-
-transition_audio = AudioFileClip("./templates/template1/input/transition_audio.wav").fx(afx.audio_normalize).fx(afx.volumex, 0.3)
 audios = [voice_audio]
-audios.append(
-    VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx(
-        afx.audio_normalize).fx(afx.volumex,0.8).set_start(voice_audio.duration))
-audios.append(
-    AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).fx(
+
+audios.append( AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).fx(
         afx.audio_normalize).fx(
             afx.volumex,
         0.3).set_duration(input_video_duration))
-audios.append(transition_audio.set_start(2.6))
-audios.append(transition_audio.set_start(4.5))
-audios.append(transition_audio.set_start(6.5))
-audios.append(transition_audio.set_start(9.5))
-audios.append(transition_audio.set_start(12.7))
-audios.append(transition_audio.set_start(13.7))
-audios.append(transition_audio.set_start(16.2))
-audios.append(transition_audio.set_start(18.7))
-audios.append(transition_audio.set_start(20.8))
-audios.append(transition_audio.set_start(24.2))
-audios.append(transition_audio.set_start(voice_audio.duration - 0.2))
+
+audios.append(camera_audio.set_start(1.8))
+audios.append(transition_audio.set_start(3.8))
+audios.append(transition_audio.set_start(6.8))
+audios.append(camera_audio.set_start(8.8))
+audios.append(camera_audio.set_start(10.8))
+audios.append(transition_audio.set_start(13.8))
+audios.append(transition_audio.set_start(15.8))
+audios.append(camera_audio.set_start(18.3))
+audios.append(camera_audio.set_start(20.8))
+audios.append(transition_audio.set_start(25.6))
+audios.append(transition_audio.set_start(voice_audio.duration - 0.5))
+
+audios.append(
+    VideoFileClip(os.path.join(folder_path, "action.mp4")).audio.fx(
+        afx.audio_normalize).fx( afx.volumex, 0.8).set_start(voice_audio.duration + 1))
 
 composite_audio_clip = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio_clip)
 
 # Save the final clip as a video file with the audio included
-final_video.subclip(0, input_video_duration).write_videofile(
-    os.path.join(folder_path, "output.mp4"),
-    temp_audiofile=f"{temp_folder}/output.aac",
-    remove_temp=True,
-    codec="libx264",
-    audio_codec="aac",
-    fps=30)
+final_video.subclip(0, input_video_duration).write_videofile(os.path.join(folder_path, "output.mp4"), temp_audiofile=f"{temp_folder}/output.aac", remove_temp=True, codec="libx264", audio_codec="aac", fps=30)
 
 try:
     shutil.rmtree(temp_folder)
-    # print(f"Folder '{temp_folder}' deleted successfully.")
+    print(f"Folder '{temp_folder}' deleted successfully.")
 except OSError as e:
     print(f"Error: {e}")

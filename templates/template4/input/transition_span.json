@@ -4,8 +4,9 @@
         "duration": 450
     },
     {
-        "name": "wipeLeft",
-        "duration": 450
+        "name": "rotate_scale_fade",
+        "duration": 450,
+        "params": { "scale": 1.5 }
     },
     {
         "name": "SimpleZoom",
@@ -28,7 +29,20 @@
         "duration": 0
     },
     {
-        "name": "SimpleZoom",
-        "duration": 450
+        "name": "WipeLeft",
+        "duration": 0
+    },
+    {
+        "name": "WipeLeft",
+        "duration": 0
+    },
+    {
+        "name": "rotate_scale_fade",
+        "duration": 450,
+        "params": { "scale": 1.5 }
+    },
+    {
+        "name": "WipeLeft",
+        "duration": 0
     }
 ]
