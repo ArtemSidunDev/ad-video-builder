@@ -11,16 +11,27 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
+parser.add_argument('subtitleSettings', type=str, help='Path to the settings file')
 args = parser.parse_args()
 
 folder_path = args.folderPath
+subtitle_settings_path = args.subtitleSettings
+
+try:
+    with open(subtitle_settings_path, 'r') as f:
+        subtitle_settings = json.load(f)
+    print("Parsed JSON:", subtitle_settings)
+except Exception as e:
+    print("Failed to read or parse JSON:", e)
 
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
-FONT = "./templates/template1/input/ProximaNova-Black.ttf"
 FONT_SIZE = 80
-FONT_COLOR = "#FFFFFF"
-FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#D2042D"
+
+FONT = f"./templates/template1/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
+FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
+FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
+FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#D2042D')
+
 FONT_OUTLINE_WIDTH = 4
 FONT_MARGIN = 20
 HIGHLIGHT_RADIUS = 21

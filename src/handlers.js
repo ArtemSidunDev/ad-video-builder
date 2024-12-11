@@ -5,9 +5,8 @@ const AWS = require('aws-sdk');
 const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 const { run: runSiteScroll } = require('./site_scroll.js');
-const { run: generateSubtitlesGPT } = require('./subtitles_gpt.js');
 const { run: generateSubtitlesSRT } = require('./subtitles_srt.js');
-const { run: generateSubtitlesAzure } = require('./subtitles_azure.js');
+const { run: generateSubtitlesASS } = require('./subtitles_ass.js');
 
 const { 
   AWS_KEY_ID, 
@@ -30,7 +29,7 @@ async function handle(templateName, data) {
     callBackUrl,
     errorCallBackUrl,
     productUrl,
-    subtitleTemplate = ''
+    subtitleSettings = {}
   } = data;
   console.log('Processing videos', adVideoId, userId)
   console.time('BUILD_TIME');
@@ -45,6 +44,11 @@ async function handle(templateName, data) {
     });
   }
   fs.mkdirSync(folderPath, { recursive: true });
+  
+  const subtitleSettingsPath = `${folderPath}/subtitleSettings.json`
+  
+  fs.writeFileSync(subtitleSettingsPath, JSON.stringify(subtitleSettings, null, 2))
+
   try {
     
     await prepareMedia(folderPath, data);
@@ -54,7 +58,7 @@ async function handle(templateName, data) {
       prepare(folderPath, data)
     ]);
 
-    await runCommand(`./templates/${templateName}/run.sh ${folderPath} ${subtitleTemplate}`);
+    await runCommand(`./templates/${templateName}/run.sh ${folderPath} ${subtitleSettingsPath}`);
     
     const fileName = uuidv4();
     
@@ -177,16 +181,19 @@ async function prepare(folderPath, data) {
     avatarUrl,
     actionUrl,
     musicUrl,
-    avatarSettings
+    avatarSettings,
+    subtitleUrl
   } = data;
-  const avatarSubtitlesUrl = avatarUrl.replace('.mp4', '.srt');
+  const avatarSubtitlesUrl = subtitleUrl ? subtitleUrl : avatarUrl.replace('.mp4', '.srt');
+
+  const subtitlesFormat = avatarSubtitlesUrl.includes('.srt') ? `srt` : `ass`
   
   await Promise.all([
     download(avatarUrl, `${folderPath}/avatar.mp4`),
     download(actionUrl, `${folderPath}/action.mp4`),
     download(musicUrl, `${folderPath}/background_audio.mp3`),
-    download(avatarSubtitlesUrl, `${folderPath}/subtitles.srt`),
     download(avatarSettings.bgImageUrl, `${folderPath}/background_image.jpg`),
+    download(avatarSubtitlesUrl, `${folderPath}/subtitles.${subtitlesFormat}`),
   ]);
 
   let acceleration= 1
@@ -201,24 +208,24 @@ async function prepare(folderPath, data) {
   }
 
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
-  fs.renameSync(`${folderPath}/avatar_end.mp4`, `${folderPath}/avatar.mp4`);
 
-  await runCommand(`./templates/common/run.sh ${folderPath}`);
-  
-  // await generateSubtitlesAzure({
-  //   folderPath,
-  //   script
-  // });
+  await runCommand(`ffmpeg -i ${folderPath}/avatar_end.mp4 -vf "scale=1216:2160" ${folderPath}/avatar.mp4`);
 
-  // await generateSubtitlesGPT({
-  //   folderPath,
-  //   script
-  // })
+  if(subtitlesFormat === 'srt') {
+    await generateSubtitlesSRT({
+      folderPath,
+      acceleration
+    })
+  } else {
+    await generateSubtitlesASS({
+      folderPath,
+      acceleration
+    })
+  }
 
-  await generateSubtitlesSRT({
-    folderPath,
-    acceleration
-  })
+  await Promise.all([
+    runCommand(`./templates/common/run.sh ${folderPath}`),
+  ]);
 }
 
 async function generateSubtitles(folderPath) {

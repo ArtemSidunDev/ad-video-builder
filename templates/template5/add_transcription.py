@@ -14,12 +14,20 @@ parser.add_argument('folderPath', type=str, help='Path to the folder')
 args = parser.parse_args()
 
 folder_path = args.folderPath
+subtitle_settings_path = args.subtitleSettings
 
-FONT = "./templates/template2/input/ProximaNova-Black.ttf"
+try:
+    with open(subtitle_settings_path, 'r') as f:
+        subtitle_settings = json.load(f)
+    print("Parsed JSON:", subtitle_settings)
+except Exception as e:
+    print("Failed to read or parse JSON:", e)
+
 FONT_SIZE = 80
-FONT_COLOR = "#FFFFFF"
-FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#D0AA3A"
+FONT = f"./templates/template1/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
+FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
+FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
+FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#D0AA3A')
 FONT_OUTLINE_WIDTH = 4
 HIGHLIGHT_RADIUS = 21
 FONT_MARGIN = 20
