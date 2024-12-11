@@ -264,9 +264,9 @@ const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration, voi
             { input: image2, top: metadata1.height, left: 0 },
             { input: image3, top: metadata1.height + metadata2.height, left: 0 },
           ])
-          .toFile(`${folderPath}/screenshots2.png`)
+          .toFile(`${folderPath}/screenshot2.png`)
 
-        screenshots.push(`${folderPath}/screenshots2.png`);
+        screenshots.push(`${folderPath}/screenshot2.png`);
     }
     await createVideo([`${folderPath}/screenshot2.png`], siteScrollResultVideoPath, duration, 2160, 3840);
     
