@@ -10,13 +10,14 @@ export DISPLAY=:$DISPLAY_NUM
 
 folder_path=$1
 
+subtitleSettings=$2
+
 sleep 2
 
-folder_path=$1
 
 python3 ./templates/template1/build_background_video.py $folder_path
 python3 ./templates/template1/add_foreground.py $folder_path
-python3 ./templates/template1/add_transcription.py $folder_path
+python3 ./templates/template1/add_transcription.py $folder_path $subtitleSettings
 
 if ps -p $XVFB_PID > /dev/null
 

@@ -50,6 +50,7 @@ function parseASS(data) {
       .replace(/\\N/g, ' ')
       .replace(/\n/g, '')
       .replace(/\s+([.,!?])/g, '$1')
+      .replace(/([.,])(?=\S)/g, '$1 ')
       .replace(/(\s*)\\n(\s*)/g, ' ')
       .trim();
 
