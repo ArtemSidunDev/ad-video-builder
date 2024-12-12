@@ -54,17 +54,16 @@ const pollMessages = async () => {
 };
 
 async function processMessage(message) {
+  const deleteParams = {
+    QueueUrl:      AWS_SQS_URL,
+    ReceiptHandle: message.ReceiptHandle,
+  };
   try {
     const body = JSON.parse(message.Body);
     const templateName = body.templateName;
     const data = body.data;
 
     await handler.handle(templateName, data);
-
-    const deleteParams = {
-      QueueUrl:      AWS_SQS_URL,
-      ReceiptHandle: message.ReceiptHandle,
-    };
 
     sqs.deleteMessage(deleteParams, (err, data) => {
       if (err) {
@@ -77,6 +76,13 @@ async function processMessage(message) {
   catch (error) {
     console.error('Error processing message FROM SQS*******************************:', error);
     console.error(error);
+    sqs.deleteMessage(deleteParams, (err, data) => {
+      if (err) {
+        console.error('Error delete message:', err);
+      } else {
+        console.log('Message deleted:', data);
+      }
+    });
   }
 }
 
