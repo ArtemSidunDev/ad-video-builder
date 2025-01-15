@@ -4,6 +4,9 @@ const { exec } = require('child_process');
 const { launch } = require('puppeteer');
 const UserAgent = require('user-agents');
 const mp3Duration = require('mp3-duration');
+const {
+    analyzeScreenshot
+  } = require('./openAI');
 
 const width = 430;
 const height = 932;
@@ -231,6 +234,9 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
 
     } catch (error) {
         console.error(error);
+
+        await browser.close();
+        
         return [];
     }
 };
@@ -238,8 +244,14 @@ const startSiteProcessing = async (siteUrl, folderPath) => {
 const run = async (siteUrl, siteScrollResultVideoPath, folderPath, duration, voice=false) => {
     console.log('Running site scroll');
     
-    const screenshots = await startSiteProcessing(siteUrl, folderPath);
-    
+    let screenshots = await startSiteProcessing(siteUrl, folderPath);
+    if(screenshots.length > 0) {
+      const result = await analyzeScreenshot(`${folderPath}/screenshot0.png`);
+      if(!result) {
+        screenshots = [];
+      }
+    }
+
     console.log('Site scroll screenshots created');
     
     if(screenshots.length === 0) {

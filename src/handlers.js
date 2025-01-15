@@ -29,7 +29,8 @@ async function handle(templateName, data) {
     callBackUrl,
     errorCallBackUrl,
     productUrl,
-    subtitleSettings = {}
+    subtitleSettings = {},
+    statusUpdateCallBackUrl
   } = data;
   console.log('Processing videos', adVideoId, userId)
   console.time('BUILD_TIME');
@@ -43,6 +44,13 @@ async function handle(templateName, data) {
       }
     });
   }
+
+  if(statusUpdateCallBackUrl) {
+    await axios.patch(statusUpdateCallBackUrl, {
+      status: 'BUILDING'
+    })
+  }
+
   fs.mkdirSync(folderPath, { recursive: true });
   
   const subtitleSettingsPath = `${folderPath}/subtitleSettings.json`
