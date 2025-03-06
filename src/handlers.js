@@ -190,11 +190,14 @@ async function prepare(folderPath, data) {
     actionUrl,
     musicUrl,
     avatarSettings,
-    subtitleUrl
+    subtitleUrl,
+    textHookImageUrl
   } = data;
   const avatarSubtitlesUrl = subtitleUrl ? subtitleUrl : avatarUrl.replace('.mp4', '.srt');
 
   const subtitlesFormat = avatarSubtitlesUrl.includes('.srt') ? `srt` : `ass`
+
+  if(textHookImageUrl) download(textHookImageUrl, `${folderPath}/textHookImageUrl.png`),
   
   await Promise.all([
     download(avatarUrl, `${folderPath}/avatar.mp4`),
