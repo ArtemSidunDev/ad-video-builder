@@ -72,11 +72,16 @@ function calculateWordTimings(subtitles) {
   return subtitles.flatMap(subtitle => {
     const words = subtitle.text.split(' ');
     const totalDuration = subtitle.end - subtitle.start;
-    const durationPerLetter = totalDuration / subtitle.text.length;
+
+    // Подсчёт букв без дефисов
+    const lettersPerWord = words.map(word => word.replace(/-/g, '').length);
+    const totalLetters = lettersPerWord.reduce((sum, len) => sum + len, 0);
+    
+    if (totalLetters === 0) return []; // Предотвращение деления на 0
 
     let currentStart = subtitle.start;
-    return words.map(word => {
-      const wordDuration = word.length * durationPerLetter;
+    return words.map((word, index) => {
+      const wordDuration = lettersPerWord[index] / totalLetters * totalDuration;
       const wordEnd = currentStart + wordDuration;
 
       const wordTiming = {
