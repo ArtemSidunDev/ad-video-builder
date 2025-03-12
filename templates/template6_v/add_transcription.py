@@ -26,7 +26,7 @@ except Exception as e:
 # API_KEY = "dc6de31a8cd54118b7c9d4e6036d197c"
 FONT_SIZE = 80
 
-FONT = f"./templates/template1/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
+FONT = f"./templates/common/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
 FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
 FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
 FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#183DF2')

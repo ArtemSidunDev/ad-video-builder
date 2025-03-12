@@ -26,7 +26,7 @@ except Exception as e:
 
 FONT_SIZE = 80
 
-FONT = f"./templates/template1/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
+FONT = f"./templates/common/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
 FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
 FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
 FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#D0AA3A')
