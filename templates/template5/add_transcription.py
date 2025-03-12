@@ -12,11 +12,7 @@ from PIL import Image, ImageDraw
 import argparse
 
 FONT_SIZE = 75
-FONT_COLOR = "#FFFFFF"
-FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#56C6F7"
 FONT_OUTLINE_WIDTH = 4
-FONT = "./templates/template5/input/ProximaNova-Black.ttf"
 
 FONT_OUTLINE_MARGIN = 30
 FONT_OUTLINE_RADIUS = 0
@@ -30,6 +26,20 @@ parser.add_argument('subtitleSettings', type=str, help='Path to the settings fil
 args = parser.parse_args()
 
 folder_path = args.folderPath
+
+subtitle_settings_path = args.subtitleSettings
+
+try:
+    with open(subtitle_settings_path, 'r') as f:
+        subtitle_settings = json.load(f)
+    print("Parsed JSON:", subtitle_settings)
+except Exception as e:
+    print("Failed to read or parse JSON:", e)
+
+FONT = f"./templates/common/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
+FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
+FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
+FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#56C6F7')
 
 TEMP_FOLDER = os.path.join(folder_path,"./temp/")
 
@@ -258,7 +268,7 @@ click_audio = AudioFileClip("./templates/template5/input/mouse-click.mp3")
 transition_audio = AudioFileClip("./templates/template5/input/swoosh.mp3")
 
 audios = [foreground_audio]
-audios.append( AudioFileClip(os.path.join(folder_path, "background_audio.mp3")))
+audios.append( AudioFileClip( os.path.join(folder_path, "background_audio.mp3")).subclip(0, foreground_audio.duration).fx(afx.volumex, 0.2))
 
 audios.append(transition_audio.set_start(3.88))
 audios.append(transition_audio.set_start(8.8))
