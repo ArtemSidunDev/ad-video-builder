@@ -26,10 +26,11 @@ async function addBorder(inputPath, outputPath) {
                 background: borderColor
             }
         })
+
         .composite([{ input: inputPath, top: borderSize, left: borderSize }])
         .toFile(outputPath);
 
-        console.log(`✅ ${path.basename(inputPath)} (Рамка добавлена)`);
+        console.log(`✅ ${path.basename(inputPath)}`);
     } catch (err) {
         console.error(`❌ Error ${path.basename(inputPath)}:`, err);
     }

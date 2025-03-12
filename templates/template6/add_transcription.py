@@ -2,6 +2,7 @@
 import numpy as np
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
 import json
+import assemblyai as aai
 from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip, VideoFileClip, ColorClip, ImageClip
 import moviepy.audio.fx.all as afx
 import os
@@ -10,48 +11,37 @@ import math
 from PIL import Image, ImageDraw
 import argparse
 
-FONT = f"./templates/template4/input/ProximaNova-Black.ttf"
-FONT_SIZE = 80
-FONT_COLOR = "#FFFFFF"
-FONT_OUTLINE_COLOR = "#000000"
-FONT_HIGHLIGHT_COLOR = "#F25F5C"
-FONT_OUTLINE_WIDTH = 4
 
-FONT_OUTLINE_MARGIN = 30
-FONT_OUTLINE_RADIUS = 0
-
-
-VIDEO_FPS = 25
-(DEST_WIDTH, DEST_HEIGHT) = (1080, 1920)
-
-parser = argparse.ArgumentParser(description="Generate a video.")
+parser = argparse.ArgumentParser(description="Generate a background video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
 parser.add_argument('subtitleSettings', type=str, help='Path to the settings file')
 args = parser.parse_args()
 
-subtitle_settings_path = args.subtitleSettings
-
-try:
-    with open(subtitle_settings_path, 'r') as f:
-        subtitle_settings = json.load(f)
-    print("Parsed JSON:", subtitle_settings)
-except Exception as e:
-    print("Failed to read or parse JSON:", e)
-
-FONT = f"./templates/common/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
-FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
-FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
-FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#F25F5C')
-
 folder_path = args.folderPath
 
-foreground_audio = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).audio
-TEMP_FOLDER = os.path.join(folder_path,"./temp/")
+FONT = "./templates/template6/input/ProximaNova-Black.ttf"
+FONT_SIZE = 80
+FONT_COLOR = "#FFFFFF"
+FONT_OUTLINE_COLOR = "#000000"
+FONT_HIGHLIGHT_COLOR = "#56C6F7"
+FONT_OUTLINE_WIDTH = 2
 
+FONT_OUTLINE_MARGIN = 30
+FONT_OUTLINE_RADIUS = 0
+
+VIDEO_FPS = 25
+(DEST_WIDTH, DEST_HEIGHT) = (1080, 1920)
+
+
+foreground_audio = VideoFileClip( os.path.join(folder_path, "bg_avatar.mp4")).audio
+
+TEMP_FOLDER = os.path.join(folder_path, "temp/")
 if not os.path.exists(TEMP_FOLDER):
     os.makedirs(TEMP_FOLDER)
+    
+foreground_audio.write_audiofile(f"{TEMP_FOLDER}foreground_audio.mp3", codec='mp3')
 
-with open(os.path.join(folder_path, "transcription.json"), 'r') as f:
+with open(os.path.join(folder_path, 'transcription.json'), 'r') as f:
     wordlevel_info = json.load(f)
 
 def get_sentences_from_words(word_list):
@@ -171,7 +161,7 @@ def create_caption(
 
     # Variables to track the width and height of a space
     space_clip = TextClip(" ", fontsize=fontsize, color=color)
-    space_width = space_clip.size[0] / 2.5
+    space_width = space_clip.size[0]
     space_height = 0
     
     # Variables to track the current position
@@ -211,7 +201,7 @@ def create_caption(
     line_widths.append( current_line_width)
     # Calculate the total height of all lines and find the starting y position
     total_text_height = sum(line_heights)
-    start_y_pos = (frame_height - total_text_height) * 3 // 4
+    start_y_pos = (frame_height - total_text_height) * 2 // 3
 
     # Second pass: set the position of each word clip
     current_line = 0
@@ -229,7 +219,6 @@ def create_caption(
         word_clip_temp = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR)
         
         word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR, size=(word_clip_temp.w + FONT_OUTLINE_MARGIN, word_clip_temp.h), method="caption")
-        # back_image = Image.new("RGB", (word_clip_highlight.w+50, word_clip_highlight.h), 0)
         mask_image = Image.new("RGB", (word_clip_highlight.w, word_clip_highlight.h), 0)
         draw = ImageDraw.Draw(mask_image)
         draw.rounded_rectangle(
@@ -261,26 +250,9 @@ input_video_duration = input_video.duration
 # also change frame_size, font size and color accordingly.
 final_video = CompositeVideoClip([input_video] + all_linelevel_splits)
 
-foreground_audio = VideoFileClip( os.path.join(folder_path, "avatar.mp4")).audio
-# foreground_audio.write_audiofile(f"{TEMP_FOLDER}foreground_audio.mp3", codec='mp3')
+audios = [foreground_audio.fx( afx.audio_normalize).fx(afx.volumex, 1.3)]
 
-
-swoosh_audio = AudioFileClip('./templates/template4/input/slide.mp3')
-slide_audio = AudioFileClip('./templates/template4/input/swoosh.mp3')
-
-audios = [foreground_audio.fx(afx.volumex, 1.0)]
-audios.append( AudioFileClip( os.path.join(folder_path, "background_audio.mp3")).subclip(0, foreground_audio.duration).fx(afx.volumex, 0.2))
-
-audios.append(swoosh_audio.set_start(108/25))
-audios.append(swoosh_audio.set_start(127/25))
-audios.append(swoosh_audio.set_start(157/25))
-audios.append(swoosh_audio.set_start(187/25))
-audios.append(slide_audio.set_start(217/25))
-audios.append(slide_audio.set_start(251/25))
-audios.append(slide_audio.set_start(441/25))
-audios.append(swoosh_audio.set_start(477/25))
-audios.append(swoosh_audio.set_start(612/25))
-audios.append(swoosh_audio.set_start(679/25))
+audios.append( AudioFileClip( os.path.join( folder_path, "background_audio.mp3")).subclip(0, input_video.duration))
 
 composite_audio = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio)
@@ -288,8 +260,9 @@ final_video = final_video.set_audio(composite_audio)
 final_video.write_videofile(os.path.join(folder_path, "output.mp4"), codec="libx264", fps=VIDEO_FPS, audio_codec="aac")
 final_video.close()
 
-# try:
-#     shutil.rmtree(TEMP_FOLDER)
-#     print(f"Folder '{TEMP_FOLDER}' deleted successfully.")
-# except OSError as e:
-#     print(f"Error: {e}")
+try:
+    shutil.rmtree(TEMP_FOLDER)
+    print(f"Folder '{TEMP_FOLDER}' deleted successfully.")
+except OSError as e:
+    print(f"Error: {e}")
+

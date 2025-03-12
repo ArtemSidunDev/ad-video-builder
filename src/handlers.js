@@ -197,7 +197,7 @@ async function prepare(folderPath, data) {
 
   const subtitlesFormat = avatarSubtitlesUrl.includes('.srt') ? `srt` : `ass`
 
-  if(textHookImageUrl) download(textHookImageUrl, `${folderPath}/textHookImageUrl.png`);
+  if(textHookImageUrl) download(textHookImageUrl, `${folderPath}/textHookImage.png`);
   
   await Promise.all([
     download(avatarUrl, `${folderPath}/avatar.mp4`),
