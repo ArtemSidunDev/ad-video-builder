@@ -2,7 +2,6 @@
 import numpy as np
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
 import json
-import assemblyai as aai
 from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip, VideoFileClip, ColorClip, ImageClip
 import moviepy.audio.fx.all as afx
 import os
@@ -25,12 +24,24 @@ FONT_OUTLINE_RADIUS = 0
 VIDEO_FPS = 25
 (DEST_WIDTH, DEST_HEIGHT) = (1080, 1920)
 
-
-
 parser = argparse.ArgumentParser(description="Generate a video.")
 parser.add_argument('folderPath', type=str, help='Path to the folder')
 parser.add_argument('subtitleSettings', type=str, help='Path to the settings file')
 args = parser.parse_args()
+
+subtitle_settings_path = args.subtitleSettings
+
+try:
+    with open(subtitle_settings_path, 'r') as f:
+        subtitle_settings = json.load(f)
+    print("Parsed JSON:", subtitle_settings)
+except Exception as e:
+    print("Failed to read or parse JSON:", e)
+
+FONT = f"./templates/common/input/{subtitle_settings.get('font', 'ProximaNova-Black')}.ttf"
+FONT_COLOR = subtitle_settings.get('fontColor', '#FFFFFF')
+FONT_OUTLINE_COLOR = subtitle_settings.get('fontOutlineColor', '#000000')
+FONT_HIGHLIGHT_COLOR = subtitle_settings.get('fontHighlightColor', '#F25F5C')
 
 folder_path = args.folderPath
 
