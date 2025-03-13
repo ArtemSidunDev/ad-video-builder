@@ -2,7 +2,6 @@
 import numpy as np
 from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
 import json
-import assemblyai as aai
 from moviepy.editor import TextClip, CompositeVideoClip, AudioFileClip, CompositeAudioClip, VideoFileClip, ColorClip, ImageClip
 import moviepy.audio.fx.all as afx
 import os
