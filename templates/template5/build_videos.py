@@ -593,7 +593,12 @@ video_clip1 = VideoClip(lambda t: appear_with_effect(t, 0.28, duration-0.4, DEST
 
 video_clip2 = concatenate_videoclips([back_video.subclip( 0, time_start), video_clip1, back_video.subclip( 0, 0.4)], method="compose").subclip( 0, time_end)
 
-fore_image2 = Image.open(os.path.join(folder_path, "textHookImage.png")).convert("RGBA").resize((DEST_WIDTH // 2, DEST_HEIGHT * 4 // 31))
+# fore_image2 = Image.open(os.path.join(folder_path, "textHookImage.png")).convert("RGBA").resize((DEST_WIDTH // 2, DEST_HEIGHT * 4 // 31))
+img = Image.open(os.path.join(folder_path, "textHookImage.png")).convert("RGBA")
+aspect_ratio = img.width / img.height
+new_width = DEST_WIDTH // 2
+new_height = int(new_width / aspect_ratio)
+fore_image2 = img.resize((new_width, new_height))
 duration2 = time_end
 
 video_clip = VideoClip(lambda t: appear_with_effect(t, 0, duration2, DEST_WIDTH * 5 // 14, DEST_HEIGHT * 1 // 5, video_clip2, fore_image2), duration=duration2)
