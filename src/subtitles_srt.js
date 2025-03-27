@@ -78,6 +78,7 @@ function parseSRT(data) {
     const formattedText = match[4]
       .replace(/([.,!?])([^\s])/g, '$1 $2')
       .replace(/\. -/g, '.')
+      .replace(/—/g, '-')
       .replace(/\n/g, ' ');
     
     result.push({
