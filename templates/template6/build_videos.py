@@ -589,12 +589,17 @@ avatar_video = VideoClip(
 
 # #  Add text mask
 
-(text_mask_center_x, text_mask_center_y) = ( int(0.5 * DEST_WIDTH), int( 0.804*DEST_HEIGHT))
-(text_mask_width, text_mask_height) = (int(0.971*DEST_WIDTH), int(0.247*DEST_HEIGHT))
+text_mask_center_x = int(0.5 * DEST_WIDTH)
+text_mask_center_y = int(0.78 * DEST_HEIGHT)
+text_hook_image = Image.open(os.path.join(folder_path, "textHookImage.png")).convert("RGBA")
+original_width, original_height = text_hook_image.size
 
-text_mask_image = Image.open(os.path.join(folder_path, "textHookImage.png")).resize((text_mask_width, text_mask_height)).convert("RGBA")
+# Define target width and height based on DEST_WIDTH and maintain aspect ratio
+text_mask_width = int(0.925 * DEST_WIDTH)
+text_mask_height = int(original_height * (text_mask_width / original_width))
+text_hook_image = text_hook_image.resize((text_mask_width, text_mask_height), Image.LANCZOS)
 back_video = VideoClip(lambda t: appear_with_effect(t, trans_duration=0, total_duration=duration, center_x = text_mask_center_x, center_y = text_mask_center_y, 
-                                                    back_media = avatar_video, fore_media=text_mask_image), duration=duration)
+                                                    back_media = avatar_video, fore_media=text_hook_image), duration=duration)
 
 # # #  Add text
 
@@ -613,12 +618,15 @@ back_video = VideoClip(lambda t: appear_with_effect(t, trans_duration=0, total_d
 (product_width, product_height) = (int(0.285*DEST_WIDTH), int(0.285*DEST_WIDTH))
 # (product_width, product_height) = (304, 304)
 
+image_files = sorted(
+    [f for f in os.listdir(folder_path) if f.endswith(".png") and f[:-4].isdigit()],
+    key=lambda x: int(x[:-4])
+)
+
 product_images = [
-    Image.open(os.path.join(folder_path, "1.png")).convert("RGB"),
-    Image.open(os.path.join(folder_path, "2.png")).convert("RGB"),
-    Image.open(os.path.join(folder_path, "3.png")).convert("RGB"),
-    Image.open(os.path.join(folder_path, "4.png")).convert("RGB")
+    Image.open(os.path.join(folder_path, img)).convert("RGB") for img in image_files
 ]
+
 
 clip_length = 4
 clip_durations = [ clip_length] * (duration//clip_length) + ([duration//clip_length]if duration%clip_length else [])
