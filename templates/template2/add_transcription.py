@@ -407,7 +407,7 @@ avatar_video = VideoFileClip(os.path.join(folder_path, "avatar.mp4"))
 audios.append( AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).fx(
         afx.audio_normalize).fx(
             afx.volumex,
-        0.3).set_duration(input_video_duration))
+        0.24).set_duration(input_video_duration))
 
 audios.append(camera_audio.set_start(1.8))
 audios.append(transition_audio.set_start(3.8))

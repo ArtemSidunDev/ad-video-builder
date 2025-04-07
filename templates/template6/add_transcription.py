@@ -307,7 +307,7 @@ final_video = CompositeVideoClip([input_video] + all_linelevel_splits)
 
 audios = [foreground_audio.fx( afx.audio_normalize).fx(afx.volumex, 1.3)]
 
-audios.append( AudioFileClip( os.path.join( folder_path, "background_audio.mp3")).subclip(0, input_video.duration))
+audios.append( AudioFileClip( os.path.join( folder_path, "background_audio.mp3")).subclip(0, input_video.duration).fx( afx.audio_normalize).fx(afx.volumex, 0.24))
 
 composite_audio = CompositeAudioClip(audios)
 final_video = final_video.set_audio(composite_audio)

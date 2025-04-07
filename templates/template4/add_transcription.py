@@ -325,7 +325,7 @@ swoosh_audio = AudioFileClip('./templates/template4/input/slide.mp3')
 slide_audio = AudioFileClip('./templates/template4/input/swoosh.mp3')
 
 audios = [foreground_audio.fx(afx.volumex, 1.0)]
-audios.append( AudioFileClip( os.path.join(folder_path, "background_audio.mp3")).subclip(0, foreground_audio.duration).fx(afx.volumex, 0.2))
+audios.append( AudioFileClip( os.path.join(folder_path, "background_audio.mp3")).subclip(0, foreground_audio.duration).fx(afx.volumex, 0.16))
 
 audios.append(swoosh_audio.set_start(108/25))
 audios.append(swoosh_audio.set_start(127/25))

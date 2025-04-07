@@ -393,7 +393,7 @@ audios.append(
     AudioFileClip(os.path.join(folder_path, "background_audio.mp3")).fx(
         afx.audio_normalize).fx(
             afx.volumex,
-        0.3).set_duration(input_video_duration))
+        0.24).set_duration(input_video_duration))
 audios.append(transition_audio.set_start(2.6))
 audios.append(transition_audio.set_start(4.5))
 audios.append(transition_audio.set_start(6.5))
