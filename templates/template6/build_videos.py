@@ -595,7 +595,7 @@ text_hook_image = Image.open(os.path.join(folder_path, "textHookImage.png")).con
 original_width, original_height = text_hook_image.size
 
 # Define target width and height based on DEST_WIDTH and maintain aspect ratio
-text_mask_width = int(0.925 * DEST_WIDTH)
+text_mask_width = int(0.905 * DEST_WIDTH)
 text_mask_height = int(original_height * (text_mask_width / original_width))
 text_hook_image = text_hook_image.resize((text_mask_width, text_mask_height), Image.LANCZOS)
 back_video = VideoClip(lambda t: appear_with_effect(t, trans_duration=0, total_duration=duration, center_x = text_mask_center_x, center_y = text_mask_center_y, 

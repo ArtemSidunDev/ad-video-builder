@@ -29,7 +29,7 @@ FONT_OUTLINE_MARGIN = 30
 FONT_OUTLINE_RADIUS = 0
 
 VIDEO_FPS = 25
-(DEST_WIDTH, DEST_HEIGHT) = (1080, 1920)
+(DEST_WIDTH, DEST_HEIGHT) = (1216, 2160)
 
 
 foreground_audio = VideoFileClip( os.path.join(folder_path, "bg_avatar.mp4")).audio
