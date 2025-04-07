@@ -420,7 +420,7 @@ video_clip.close()
 # ================== 3. Resize Video into destination size ====================
 
 # Time : 5-7s
-clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).subclip(0, get_durations(idx=3))
+clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).without_audio().subclip(0, get_durations(idx=3))
 adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
 write_videoclips( adjusted_video, idx=3)
 clip.close()
@@ -683,7 +683,7 @@ video_clip.close()
 # ================== 10. Resize Video into destination size ==============
 # Time : 21-24.5s
 
-clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).subclip(0, get_durations(idx=10))
+clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).without_audio().subclip(0, get_durations(idx=10))
 adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
 write_videoclips(adjusted_video, idx=10)
 clip.close()
@@ -692,7 +692,7 @@ clip.close()
 # Time : 24.5-29s
 clip_start = get_timestamp_with_transtion_span(11)[0]
 
-clip = VideoFileClip(os.path.join(folder_path,"bg_avatar.mp4"))
+clip = VideoFileClip(os.path.join(folder_path,"bg_avatar.mp4")).without_audio()
 
 clip_end = clip.duration
 
@@ -708,7 +708,7 @@ def blur_frame(frame):
     return cv2.GaussianBlur(frame, (51, 51), 10)
 
 blur_amount = 3
-clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).subclip(0, get_durations(idx=12))
+clip = VideoFileClip(os.path.join(folder_path,"ss.mp4")).without_audio().subclip(0, get_durations(idx=12))
 adjusted_video = resize_with_scaled_target(clip).resize((video_dest_width, video_dest_height))
 background_clip = adjusted_video.fl_image(blur_frame)
 clip.close()
@@ -753,7 +753,7 @@ def replace_green_background(frame, time):
 
 
 foreground_clip = VideoFileClip(
-    os.path.join(folder_path, "action.mp4")).subclip(0, get_durations(idx=12))
+    os.path.join(folder_path, "action.mp4")).without_audio().subclip(0, get_durations(idx=12))
 
 foreground_width = background_clip.size[0]
 foreground_height = int(

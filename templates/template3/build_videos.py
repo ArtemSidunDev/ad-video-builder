@@ -5,12 +5,13 @@ Created on Mon May  6 07:01:03 2024
 @author: codemaven
 """
 
+import os
 import cv2
+import copy
 import numpy as np
 from PIL import Image, ImageOps
-from moviepy.editor import VideoClip, VideoFileClip, clips_array, concatenate_videoclips
+from moviepy.editor import VideoClip, VideoFileClip, ImageClip, clips_array, concatenate_videoclips
 import subprocess
-import os
 import argparse
 
 parser = argparse.ArgumentParser(description="Generate a background video.")
@@ -26,6 +27,8 @@ video_dest_height = 2160
 wipe_left_time = 400
 
 speed_factor = 1.0
+
+GREEN_COLOR = (15, 250, 74)
 
 # Aspect ratios for comparison
 ASPECT_RATIOS = {
@@ -70,44 +73,14 @@ def appearance_effect(t):
         back_frame[top:bottom, left:right]= fore_frame
     return back_frame
 
-def add_foreground(frame, t, foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height):
+def add_foreground(frame, t, foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height, zoom_dest=1.5, offset_y=100):
     if foreground_x is None or foreground_y is None:
         return frame
-
-    front_frame = foreground_clip.get_frame(t)
-    # Convert the frame to HSV color space
-    hsv = cv2.cvtColor(front_frame, cv2.COLOR_RGB2HSV)
-
-    # Define lower and upper bounds for green color in HSV
-    lower_green = np.array([40, 40, 40])
-    upper_green = np.array([70, 255, 255])
-
-    # Create a mask for green color
-    mask = cv2.inRange(hsv, lower_green, upper_green)
-
-    mask_inverse = cv2.bitwise_not(mask)
-    foreground_frame = cv2.bitwise_and(
-        front_frame, front_frame, mask=mask_inverse)
-
-    foreground_with_mask = np.zeros(frame.shape, dtype=np.uint8)
-    foreground_with_mask[foreground_y: foreground_y +
-                         foreground_height, foreground_x: foreground_x +
-                         foreground_width] = foreground_frame
     
-    # Invert the mask
-    black_mask = np.zeros(
-        (frame.shape[0],
-         frame.shape[1]),
-        dtype=np.uint8)
-    black_mask[foreground_y: foreground_y + foreground_height,
-               foreground_x: foreground_x + foreground_width] = mask_inverse
-
-    total_mask_inverse = cv2.bitwise_not(black_mask)
-
-    background_with_mask = cv2.bitwise_and(
-        frame, frame, mask=total_mask_inverse)
-    final_frame = cv2.bitwise_or(foreground_with_mask, background_with_mask)
-    return final_frame
+    front_frame = foreground_clip.get_frame(t)
+    zoomed_frame = build_zoomed_avatar( t = t, avatar_frame = front_frame, zoom_dest=zoom_dest, offset_y=offset_y)
+    frame = replace_green_background(zoomed_frame, frame, t, fore_center_x= foreground_x + foreground_width//2, fore_center_y = foreground_y + foreground_height//2)
+    return frame
 
 def zoom_frame(t, image, video_dest_width, video_dest_height, duration, zoom_dest=1.0):
     """
@@ -249,7 +222,6 @@ def get_video_length( idx):
     elif idx > 1 and idx < len(video_spans):
         return video_spans[idx - 1] + (transition_spans[idx - 2] + transition_spans[idx - 1]) / 2
     return 0
-
 def get_closest_aspect_ratio(image, video_dest_width=video_dest_width, video_dest_height=video_dest_height):
     """
     Returns the closest predefined aspect ratio to the given image dimensions, excluding 'Half'.
@@ -451,6 +423,97 @@ def sliding_frame(t, direction, image, video_dest_width, video_dest_height, dura
     
     return np.array(cropped_image)
 
+def build_zoomed_avatar(t, avatar_frame, zoom_dest = 1.0, offset_y = 0, back_media=None):
+    """
+    Creates a zoomed avatar video with a replaced green background.
+    """
+    
+    # avatar_frame = avatar_video.get_frame(t)
+    
+    # Zoom the avatar frame
+    image_height, image_width, _ = avatar_frame.shape
+    new_width, new_height = int(image_width * zoom_dest), int(image_height * zoom_dest)
+    
+    if back_media == None:
+        back_frame = np.full( ( int( image_height*zoom_dest), int( image_width*zoom_dest), 3), GREEN_COLOR, dtype=np.uint8)
+
+    elif isinstance(back_media, VideoClip):
+        back_frame = back_media.get_frame(t)
+
+        back_frame = cv2.resize(back_frame, (int(back_frame.shape[1] * zoom_dest), int(back_frame.shape[0] * zoom_dest)), interpolation=cv2.INTER_LINEAR)
+    elif isinstance(back_media, Image.Image):
+        back_frame = np.array(back_media)
+        back_frame = cv2.resize(back_frame, (int(back_frame.shape[1] * zoom_dest), int(back_frame.shape[0] * zoom_dest)), interpolation=cv2.INTER_LINEAR)
+    elif isinstance(back_media, np.ndarray):
+        back_frame = back_media
+        back_frame = cv2.resize(back_frame, (int(back_frame.shape[1] * zoom_dest), int(back_frame.shape[0] * zoom_dest)), interpolation=cv2.INTER_LINEAR)
+
+    if zoom_dest >= 1:
+        resized_image = np.array(Image.fromarray(avatar_frame).resize((new_width, new_height), Image.Resampling.LANCZOS))
+    
+        back_frame[ int(offset_y*zoom_dest):, :] = resized_image[ 0 : int(new_height - offset_y*zoom_dest), :]   
+    else:
+        
+        resized_image = np.array( Image.fromarray(avatar_frame).resize((new_width, new_height), Image.Resampling.LANCZOS))
+        
+        top = ((image_height - new_height) // 2) + offset_y
+        left = (image_width - new_width) // 2
+        
+        top = max(top, 0)
+        left = max(left, 0)
+        
+        if top + new_height > image_height:
+            new_height = image_height - top
+            resized_image = resized_image[:new_height, :]
+        if left + new_width > image_width:
+            new_width = image_width - left
+            resized_image = resized_image[:, :new_width]
+
+        back_frame[top:top+new_height, left:left+new_width] = resized_image
+    return back_frame
+
+def replace_green_background( foreground_media, replacement_media, t=None, fore_center_x=video_dest_width//2, fore_center_y=video_dest_height//2):
+    """
+    Replaces the green background in a frame with another image.
+    """
+    if isinstance(foreground_media, VideoClip):
+        frame = copy.deepcopy( foreground_media.get_frame(t))
+    elif isinstance(foreground_media, Image.Image):
+        frame = copy.deepcopy( np.array(foreground_media))
+    elif isinstance(foreground_media, np.ndarray):
+        frame = copy.deepcopy( foreground_media)
+    
+    if isinstance(replacement_media, VideoClip):
+        replacement_frame = replacement_media.get_frame(t)
+    elif isinstance(replacement_media, Image.Image):
+        replacement_frame = np.array(replacement_media)
+    elif isinstance(replacement_media, np.ndarray):
+        replacement_frame = replacement_media
+    
+    rows, cols, _ = replacement_frame.shape
+    background = copy.deepcopy(replacement_frame)
+    
+    x_start = max(fore_center_x - frame.shape[1] // 2, 0)
+    y_start = max(fore_center_y - frame.shape[0] // 2, 0)
+    x_end = min(fore_center_x + frame.shape[1] // 2, cols)
+    y_end = min(fore_center_y + frame.shape[0] // 2, rows)
+    
+    fg_x_start = max(frame.shape[1] // 2 - fore_center_x, 0)
+    fg_y_start = max(frame.shape[0] // 2 - fore_center_y, 0)
+    fg_x_end = fg_x_start + (x_end - x_start)
+    fg_y_end = fg_y_start + (y_end - y_start)
+    
+    hsv = cv2.cvtColor(frame[fg_y_start:fg_y_end, fg_x_start:fg_x_end], cv2.COLOR_RGB2HSV)
+    lower_green = np.array([40, 40, 40])
+    upper_green = np.array([70, 255, 255])
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+    mask_inverse = cv2.bitwise_not(mask)
+    
+    foreground = cv2.bitwise_and(frame[fg_y_start:fg_y_end, fg_x_start:fg_x_end], frame[fg_y_start:fg_y_end, fg_x_start:fg_x_end], mask=mask_inverse)
+    
+    background[y_start:y_end, x_start:x_end] = cv2.bitwise_and(background[y_start:y_end, x_start:x_end], background[y_start:y_end, x_start:x_end], mask=mask)
+    background[y_start:y_end, x_start:x_end] = cv2.add( foreground.astype(np.uint8), background[y_start:y_end, x_start:x_end].astype(np.uint8))
+    return background
 
 # =================== GLOBAL Variable Declearation ============================
 # global transition_span, zoom_dest, dest_width, dest_height, image_width, image_height, is_to_right, foreground_x, foreground_y
@@ -824,7 +887,7 @@ else:
 foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end).resize((video_dest_width*0.6, video_dest_height*0.6))
 
 foreground_width, foreground_height = foreground_clip.size[0], foreground_clip.size[1]
-foreground_x, foreground_y = video_dest_width - foreground_width, video_dest_height - foreground_height
+foreground_x, foreground_y = video_dest_width - foreground_width+100, video_dest_height - foreground_height-50
 
 processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t, foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height))
 

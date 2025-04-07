@@ -280,26 +280,28 @@ def create_caption(
     frame_width, frame_height = framesize
     x_buffer = frame_width * 1 / 10
 
+    # Variables to track the width and height of a space
     space_clip = TextClip(" ", fontsize=fontsize, color=color)
     space_width = space_clip.size[0] - 34
     space_height = 0
-
+    
+    # Variables to track the current position
     x_pos, y_pos = 0, 0
     line_widths = []
     line_heights = []
-
+    
     current_line_width = 0
 
+     # First pass: calculate the width and height of each word and line
     for wordJSON in textJSON['textcontents']:
-        word_clip = TextClip(wordJSON['word'], font=font, fontsize=fontsize, color=color, method="caption")
+        word_clip = TextClip(wordJSON['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH)
         word_width, word_height = word_clip.size
 
         if x_pos + word_width + space_width > frame_width - 2 * x_buffer:
-            line_heights.append(y_pos + word_height)
-            line_widths.append(current_line_width)
-            x_pos, y_pos = 0, y_pos + word_height + space_height
-            current_line_width = 0
-
+            line_heights.append(y_pos + word_height)  # Store the height of the line
+            line_widths.append(current_line_width) # Store the width of the line
+            x_pos, y_pos = 0, y_pos + word_height + space_height  # Move to the next line
+            current_line_width = 0 # Reset the current line width
         xy_textclips_positions.append({
             "x_pos": x_pos,
             "y_pos": y_pos,
@@ -314,18 +316,52 @@ def create_caption(
         x_pos += word_width + space_width
         current_line_width += word_width + space_width
 
-    line_heights.append(word_height)
-    line_widths.append(current_line_width)
-
+    # Add the last line height
+    line_heights.append( word_height)
+    line_widths.append( current_line_width)
+    # Calculate the total height of all lines and find the starting y position
     total_text_height = sum(line_heights)
-    start_y_pos = frame_height * 0.43
+    # Calculate the starting y position should be 43% of the frame height
+    start_y_pos = frame_height * 0.43 
 
+    # Second pass: set the position of each word clip
+    current_line = 0
     for word_info in xy_textclips_positions:
-        current_line = word_info['y_pos'] // word_height
+        
+        current_line = word_info['y_pos'] // word_height # Move to the next line
 
+        # Center the line horizontally
         centered_x_pos = (frame_width - line_widths[current_line]) / 2 + word_info['x_pos']
-        word_clip_temp = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, bg_color=highlightcolor, method="caption")
-        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, bg_color=highlightcolor, size=(word_clip_temp.w + FONT_MARGIN, word_clip_temp.h), method="caption")
+        # move_text_up_time_ranges = [
+        #     [0, 3.5],
+        #     [14.9, 20]
+        # ]
+
+        # move_text_down_time_ranges = [
+        #     [3.5, 10.9],
+        #     [24.0, foreground_audio.duration]
+        # ]
+        # if is_in_range(textJSON['start'], move_text_up_time_ranges):
+        #     start_y_pos = frame_height * 0.30
+        # if is_in_range(textJSON['start'], move_text_down_time_ranges):
+        #     start_y_pos = frame_height * 0.80
+        y_offset = 200
+        
+        if textJSON['start'] >= 0  and textJSON['end'] <= 4.1:
+            y_offset = 0
+        elif textJSON['start'] >= 4 and textJSON['end'] <= 11.6:
+            y_offset = -250
+        elif textJSON['start'] >= 11 and textJSON['end'] <= 20.9:
+            y_offset = -250
+        elif textJSON['start'] >= 22:
+            y_offset = -250
+        
+        word_clip = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH).set_start( textJSON['start']).set_duration( full_duration)
+        word_clip = word_clip.set_position((centered_x_pos, start_y_pos + y_offset + word_info['y_pos'] * 0.8))
+        word_clips.append(word_clip)
+        
+        word_clip_temp = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR)
+        word_clip_highlight = TextClip(word_info['word'], font=font, fontsize=fontsize, color=color, stroke_color=FONT_OUTLINE_COLOR, stroke_width=FONT_OUTLINE_WIDTH, bg_color=FONT_HIGHLIGHT_COLOR, size=(word_clip_temp.w + FONT_MARGIN,word_clip_temp.h), method="caption")
         mask_image = Image.new("RGB", (word_clip_highlight.w, word_clip_highlight.h), 0)
         draw = ImageDraw.Draw(mask_image)
         draw.rounded_rectangle(
@@ -335,7 +371,7 @@ def create_caption(
         )
         mask_clip = ImageClip(np.array(mask_image), ismask=True).set_duration(word_info['duration'])
         word_clip_highlight = word_clip_highlight.set_mask(mask_clip).set_start(word_info['start']).set_duration(word_info['duration'])
-        word_clip_highlight = word_clip_highlight.set_position((centered_x_pos - FONT_MARGIN // 2, start_y_pos + word_info['y_pos'] * 0.8))
+        word_clip_highlight = word_clip_highlight.set_position( ( centered_x_pos-FONT_MARGIN//2, start_y_pos + y_offset + word_info['y_pos'] * 0.8))       
         word_clips.append(word_clip_highlight)
 
         outline_clips = generate_outline_text(
@@ -344,7 +380,7 @@ def create_caption(
             fontsize=fontsize,
             color=color,
             outline_color=FONT_OUTLINE_COLOR,
-            pos=(centered_x_pos, start_y_pos + word_info['y_pos'] * 0.8),
+            pos=(centered_x_pos, start_y_pos + y_offset + word_info['y_pos'] * 0.8),
             start=textJSON['start'],
             duration=full_duration
         )

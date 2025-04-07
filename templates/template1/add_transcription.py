@@ -322,6 +322,15 @@ def create_caption(
     start_y_pos = frame_height * 0.43
 
     for word_info in xy_textclips_positions:
+
+        y_offset = -200
+        if textJSON['start'] >= 15 and textJSON['end'] <= 19.3:
+            y_offset = -550
+        elif textJSON['start'] >= 22.5:
+            y_offset = -550
+        
+        print("y_offset", textJSON['start'], textJSON['end'], y_offset, textJSON['word'])
+        
         current_line = word_info['y_pos'] // word_height
 
         centered_x_pos = (frame_width - line_widths[current_line]) / 2 + word_info['x_pos']
@@ -336,7 +345,7 @@ def create_caption(
         )
         mask_clip = ImageClip(np.array(mask_image), ismask=True).set_duration(word_info['duration'])
         word_clip_highlight = word_clip_highlight.set_mask(mask_clip).set_start(word_info['start']).set_duration(word_info['duration'])
-        word_clip_highlight = word_clip_highlight.set_position((centered_x_pos - FONT_MARGIN // 2, start_y_pos + word_info['y_pos'] * 0.8))
+        word_clip_highlight = word_clip_highlight.set_position((centered_x_pos - FONT_MARGIN // 2, start_y_pos + y_offset + word_info['y_pos'] * 0.8))
         word_clips.append(word_clip_highlight)
 
         outline_clips = generate_outline_text(
@@ -345,7 +354,7 @@ def create_caption(
             fontsize=fontsize,
             color=color,
             outline_color=FONT_OUTLINE_COLOR,
-            pos=(centered_x_pos, start_y_pos + word_info['y_pos'] * 0.8),
+            pos=(centered_x_pos, start_y_pos + y_offset + word_info['y_pos'] * 0.8),
             start=textJSON['start'],
             duration=full_duration
         )
@@ -409,8 +418,8 @@ final_video.subclip(0, input_video_duration).write_videofile(
     audio_codec="aac",
     fps=30)
 
-try:
-    shutil.rmtree(temp_folder)
-    # print(f"Folder '{temp_folder}' deleted successfully.")
-except OSError as e:
-    print(f"Error: {e}")
+# try:
+#     shutil.rmtree(temp_folder)
+#     # print(f"Folder '{temp_folder}' deleted successfully.")
+# except OSError as e:
+#     print(f"Error: {e}")

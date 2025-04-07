@@ -5,10 +5,12 @@ Updated on Feb 1 07:01:03 2024
 @author: codemaven
 """
 
+import os
 import cv2
+import copy
 import numpy as np
 from PIL import Image, ImageOps
-from moviepy.editor import VideoClip, VideoFileClip, clips_array, concatenate_videoclips
+from moviepy.editor import VideoClip, VideoFileClip, ImageClip, clips_array, concatenate_videoclips
 import subprocess
 import os
 import argparse
@@ -27,6 +29,8 @@ wipe_left_time = 400
 
 speed_factor = 1.0
 
+GREEN_COLOR = (15, 250, 74)
+
 # Aspect ratios for comparison
 ASPECT_RATIOS = {
     "Square": (1, 1),
@@ -42,45 +46,16 @@ temp_folder = os.path.join(folder_path, "temp")
 if not os.path.exists(temp_folder):
     os.makedirs(temp_folder)
     
-def add_foreground(frame, t):
+def add_foreground(frame, t, zoom_dest=1.2, offset_y=0):
     global foreground_clip, foreground_x, foreground_y, foreground_width, foreground_height
+    front_frame = foreground_clip.get_frame(t)
     # return frame
     if foreground_x is None or foreground_y is None:
         return frame
 
-    front_frame = foreground_clip.get_frame(t)
-    # Convert the frame to HSV color space
-    hsv = cv2.cvtColor(front_frame, cv2.COLOR_RGB2HSV)
-
-    # Define lower and upper bounds for green color in HSV
-    lower_green = np.array([40, 40, 40])
-    upper_green = np.array([70, 255, 255])
-
-    # Create a mask for green color
-    mask = cv2.inRange(hsv, lower_green, upper_green)
-
-    mask_inverse = cv2.bitwise_not(mask)
-    foreground_frame = cv2.bitwise_and(
-        front_frame, front_frame, mask=mask_inverse)
-
-    foreground_with_mask = np.zeros( frame.shape, dtype=np.uint8)
-    foreground_with_mask[foreground_y: foreground_y +
-                         foreground_height, foreground_x: foreground_x +
-                         foreground_width,] = foreground_frame
-    # Invert the mask
-    black_mask = np.zeros(
-        (frame.shape[0],
-         frame.shape[1]),
-        dtype=np.uint8)
-    black_mask[foreground_y: foreground_y + foreground_height,
-               foreground_x: foreground_x + foreground_width] = mask_inverse
-
-    total_mask_inverse = cv2.bitwise_not(black_mask)
-
-    background_with_mask = cv2.bitwise_and(
-        frame, frame, mask=total_mask_inverse)
-    final_frame = cv2.bitwise_or(foreground_with_mask, background_with_mask)
-    return final_frame
+    zoomed_frame = build_zoomed_avatar( t = t, avatar_frame = front_frame, zoom_dest=zoom_dest, offset_y=offset_y)
+    frame = replace_green_background(zoomed_frame, frame, t, fore_center_x= foreground_x + foreground_width//2, fore_center_y = foreground_y + foreground_height//2)
+    return frame
 
 def prepare_image(image_path, dest_width, dest_height):
     # Load the image and convert it to RGB
@@ -416,6 +391,98 @@ def sliding_frame(t, direction, image, video_dest_width, video_dest_height, dura
     
     return np.array(cropped_image)
     
+def build_zoomed_avatar(t, avatar_frame, zoom_dest = 1.0, offset_y = 0, back_media=None):
+    """
+    Creates a zoomed avatar video with a replaced green background.
+    """
+    
+    # avatar_frame = avatar_video.get_frame(t)
+    
+    # Zoom the avatar frame
+    image_height, image_width, _ = avatar_frame.shape
+    new_width, new_height = int(image_width * zoom_dest), int(image_height * zoom_dest)
+    
+    if back_media == None:
+        back_frame = np.full( ( int( image_height*zoom_dest), int( image_width*zoom_dest), 3), GREEN_COLOR, dtype=np.uint8)
+
+    elif isinstance(back_media, VideoClip):
+        back_frame = back_media.get_frame(t)
+
+        back_frame = cv2.resize(back_frame, (int(back_frame.shape[1] * zoom_dest), int(back_frame.shape[0] * zoom_dest)), interpolation=cv2.INTER_LINEAR)
+    elif isinstance(back_media, Image.Image):
+        back_frame = np.array(back_media)
+        back_frame = cv2.resize(back_frame, (int(back_frame.shape[1] * zoom_dest), int(back_frame.shape[0] * zoom_dest)), interpolation=cv2.INTER_LINEAR)
+    elif isinstance(back_media, np.ndarray):
+        back_frame = back_media
+        back_frame = cv2.resize(back_frame, (int(back_frame.shape[1] * zoom_dest), int(back_frame.shape[0] * zoom_dest)), interpolation=cv2.INTER_LINEAR)
+
+    if zoom_dest >= 1:
+        resized_image = np.array(Image.fromarray(avatar_frame).resize((new_width, new_height), Image.Resampling.LANCZOS))
+    
+        back_frame[ int(offset_y*zoom_dest):, :] = resized_image[ 0 : int(new_height - offset_y*zoom_dest), :]   
+    else:
+        
+        resized_image = np.array( Image.fromarray(avatar_frame).resize((new_width, new_height), Image.Resampling.LANCZOS))
+        
+        top = ((image_height - new_height) // 2) + offset_y
+        left = (image_width - new_width) // 2
+        
+        top = max(top, 0)
+        left = max(left, 0)
+        
+        if top + new_height > image_height:
+            new_height = image_height - top
+            resized_image = resized_image[:new_height, :]
+        if left + new_width > image_width:
+            new_width = image_width - left
+            resized_image = resized_image[:, :new_width]
+
+        back_frame[top:top+new_height, left:left+new_width] = resized_image
+    return back_frame
+
+def replace_green_background( foreground_media, replacement_media, t=None, fore_center_x=video_dest_width//2, fore_center_y=video_dest_height//2):
+    """
+    Replaces the green background in a frame with another image.
+    """
+    if isinstance(foreground_media, VideoClip):
+        frame = copy.deepcopy( foreground_media.get_frame(t))
+    elif isinstance(foreground_media, Image.Image):
+        frame = copy.deepcopy( np.array(foreground_media))
+    elif isinstance(foreground_media, np.ndarray):
+        frame = copy.deepcopy( foreground_media)
+    
+    if isinstance(replacement_media, VideoClip):
+        replacement_frame = replacement_media.get_frame(t)
+    elif isinstance(replacement_media, Image.Image):
+        replacement_frame = np.array(replacement_media)
+    elif isinstance(replacement_media, np.ndarray):
+        replacement_frame = replacement_media
+    
+    rows, cols, _ = replacement_frame.shape
+    background = copy.deepcopy(replacement_frame)
+    
+    x_start = max(fore_center_x - frame.shape[1] // 2, 0)
+    y_start = max(fore_center_y - frame.shape[0] // 2, 0)
+    x_end = min(fore_center_x + frame.shape[1] // 2, cols)
+    y_end = min(fore_center_y + frame.shape[0] // 2, rows)
+    
+    fg_x_start = max(frame.shape[1] // 2 - fore_center_x, 0)
+    fg_y_start = max(frame.shape[0] // 2 - fore_center_y, 0)
+    fg_x_end = fg_x_start + (x_end - x_start)
+    fg_y_end = fg_y_start + (y_end - y_start)
+    
+    hsv = cv2.cvtColor(frame[fg_y_start:fg_y_end, fg_x_start:fg_x_end], cv2.COLOR_RGB2HSV)
+    lower_green = np.array([40, 40, 40])
+    upper_green = np.array([70, 255, 255])
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+    mask_inverse = cv2.bitwise_not(mask)
+    
+    foreground = cv2.bitwise_and(frame[fg_y_start:fg_y_end, fg_x_start:fg_x_end], frame[fg_y_start:fg_y_end, fg_x_start:fg_x_end], mask=mask_inverse)
+    
+    background[y_start:y_end, x_start:x_end] = cv2.bitwise_and(background[y_start:y_end, x_start:x_end], background[y_start:y_end, x_start:x_end], mask=mask)
+    background[y_start:y_end, x_start:x_end] = cv2.add( foreground.astype(np.uint8), background[y_start:y_end, x_start:x_end].astype(np.uint8))
+    return background
+
 # =================== GLOBAL Variable Declearation ============================
 
 global transition_span, zoom_dest, dest_width, dest_height, zoom_image
@@ -478,7 +545,8 @@ elif closest_ratio_name == "Wide":
 else:
     raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
 
-lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
+lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).without_audio().subclip(clip_start, clip_end).crop(
+    int(0.1*video_dest_width), video_dest_height // 4, int(0.9*video_dest_width), int( video_dest_height // 4 + video_dest_height * 0.8 / 2 )).resize((video_dest_width, video_dest_height//2))
 
 # Stack the videos vertically
 composed_clip = clips_array([[upper_video_clip], [lower_video_clip]])
@@ -537,17 +605,17 @@ elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
 else:
     raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
 
-foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).without_audio().subclip( clip_start, clip_end)
 
 # Set foreground speacker size to 60% of background video
-foreground_width = int(background_clip.size[0] * 0.6)
+foreground_width = int(background_clip.size[0] * 0.7)
 foreground_height = int( foreground_clip.size[1] * foreground_width / foreground_clip.size[0])
 foreground_clip = foreground_clip.resize((foreground_width, foreground_height))
 
-foreground_x, foreground_y = 0, video_dest_height - foreground_height
+foreground_x, foreground_y = -80, video_dest_height - foreground_height
 # Apply the replace_green_background function to each frame of the
 # Deley for 2 seconds
-processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t))
+processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t, offset_y=100))
 
 blur_duration = get_transition_span( idx = 1)
 blurred_clip = processed_clip.fl(apply_decreasing_blur)
@@ -566,7 +634,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=3)
 clip_start, clip_end = get_video_timespan( idx=3)
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(5, 5 + clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).without_audio().subclip(5, 5 + clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -581,14 +649,14 @@ cropped_clip = clip.crop( 0,  102,  new_width, 102 + new_height).resize( (video_
 
 background_clip = cropped_clip.subclip( 0, clip_length)
 
-foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end).crop(
-    0, int( video_dest_height / (0.8 * 8)), 0, int( 5*video_dest_height/ (0.8 * 8))).resize((video_dest_width*0.8, video_dest_height//2))
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).without_audio().subclip( clip_start, clip_end).crop(
+    int(0.1*video_dest_width), video_dest_height // 4, int(0.9*video_dest_width), int( video_dest_height // 4 + video_dest_height * 0.8 / 2 )).resize((video_dest_width, video_dest_height//2))
 
 # foreground_clip.write_videofile("output.mp4", fps=video_fps, codec="libx264")
 foreground_width, foreground_height = foreground_clip.size[0], foreground_clip.size[1]
 foreground_x, foreground_y = ( video_dest_width - foreground_width)//2, video_dest_height // 2
 
-processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t))
+processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t, zoom_dest=1.0))
 
 # Write the processed video to a file
 processed_clip.subclip(0, clip_length).write_videofile( f"{temp_folder}/03.mp4", codec="libx264", fps=video_fps)
@@ -605,7 +673,7 @@ processed_clip.close()
 clip_length = get_video_length( idx=4)
 clip_start, clip_end = get_video_timespan( idx=4)
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(8, 5 + clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).without_audio().subclip(8, 5 + clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -755,7 +823,7 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"An error occurred while executing the command: {e.stderr}")
 
-lower_video_clip = VideoFileClip(f"{temp_folder}/04_lower.mp4").subclip( 0, clip_length)
+lower_video_clip = VideoFileClip(f"{temp_folder}/04_lower.mp4").without_audio().subclip( 0, clip_length)
 
 # add trasition
 def pop_from_bottom(t):
@@ -764,7 +832,7 @@ def pop_from_bottom(t):
     else:
         new_height = video_dest_height // 2 
     global foreground_x, foreground_y, foreground_width, foreground_height
-    foreground_width, foreground_height = foreground_clip.size[0], foreground_clip.size[1]
+    foreground_width, foreground_height = int(foreground_clip.size[0]), int( foreground_clip.size[1])
     foreground_x = ( video_dest_width - foreground_width)//2
     foreground_y = video_dest_height // 2 - new_height    
     lower_frame = lower_video_clip.get_frame(t)
@@ -774,12 +842,12 @@ def pop_from_bottom(t):
     
     # Paste the cropped image onto the upper frame
     upper_frame[video_dest_height - new_height:, :video_dest_width] = cropped_image
-    return add_foreground( upper_frame, t)
+    return add_foreground( upper_frame, t, zoom_dest=1)
     # return upper_frame
 
 trans_duration = 1/4
-foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start ,clip_end).crop(
-    0, int( video_dest_height / (0.8 * 8)), 0, int( 5*video_dest_height/ (0.8 * 8))).resize((video_dest_width*0.8, video_dest_height//2))
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).without_audio().subclip( clip_start ,clip_end).crop(
+    int(0.1*video_dest_width), video_dest_height // 4, int(0.9*video_dest_width), int( video_dest_height // 4 + video_dest_height * 0.8 / 2 )).resize((video_dest_width, video_dest_height//2))
 
 processed_clip = VideoClip(pop_from_bottom, duration=4)
 
@@ -873,7 +941,7 @@ blurred_clip.close()
 clip_length = get_video_length( idx=6)
 clip_start, clip_end = get_video_timespan( idx=6)
 
-avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip(clip_start ,clip_end)
+avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).without_audio().subclip(clip_start ,clip_end)
 avatar_clip.write_videofile(f"{temp_folder}/06.mp4", codec="libx264", fps=video_fps)
 avatar_clip.close()
 
@@ -1024,9 +1092,9 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"An error occurred while executing the command: {e.stderr}")
 
-upper_video_clip = VideoFileClip(f"{temp_folder}/07_upper.mp4").subclip( 0, clip_length)
+upper_video_clip = VideoFileClip(f"{temp_folder}/07_upper.mp4").without_audio().subclip( 0, clip_length)
 
-lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
+lower_video_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).without_audio().subclip( clip_start, clip_end).crop( 0, video_dest_height//6, video_dest_width, video_dest_height//2 + video_dest_height//6)
 
 # Stack the videos vertically
 final_clip = clips_array([[upper_video_clip], [lower_video_clip]])
@@ -1051,11 +1119,11 @@ def drop_from_top(t):
     
     return back_frame
 
-back_frame = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).get_frame( clip_start).copy()
+back_frame = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).without_audio().get_frame( clip_start).copy()
 
 transition_span = 1/4
 
-back_frame_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_start + transition_span)
+back_frame_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).without_audio().subclip( clip_start, clip_start + transition_span)
 processed_clip = VideoClip(drop_from_top, duration=5)
 
 blur_duration = get_transition_span( idx = 7)
@@ -1097,7 +1165,7 @@ if closest_ratio_name == "Tall":
                 duration=transition_span,
                 zoom_dest= 0.9  # Target zoom level for final frame (e.g., <1 for zoom out)
             ),
-            duration=duration
+            duration=transition_span
         )
 elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
     adjusted_image = resize_with_scaled_target(image, target=closest_ratio_name)
@@ -1113,21 +1181,21 @@ elif closest_ratio_name == "Square" or closest_ratio_name == "Wide":
             scale = horizontal_scale,
             scale_direction = 'horizontal'
         ),
-        duration=duration
+        duration=transition_span
     )
 else:
     raise ValueError("Invalid target aspect ratio. Choose 'Square', 'Tall', or 'Wide'.")      
 # Create the video clip using the modified zoom_in_frame function
-foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).subclip( clip_start, clip_end)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "avatar.mp4")).without_audio().subclip( clip_start, clip_end)
 
-# Set foreground speacker size to 60% of background video
-foreground_width = int(background_clip.size[0] * 0.6)
+# Set foreground speacker size to 70% of background video
+foreground_width = int(background_clip.size[0] * 0.7)
 foreground_height = int( foreground_clip.size[1] * foreground_width / foreground_clip.size[0])
 foreground_clip = foreground_clip.resize((foreground_width, foreground_height))
 
-foreground_x, foreground_y = video_dest_width - foreground_width, video_dest_height - foreground_height
+foreground_x, foreground_y = video_dest_width - foreground_width + 80, video_dest_height - foreground_height
 # Apply the replace_green_background function to each frame of the
-processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t))
+processed_clip = background_clip.fl(lambda gf, t: add_foreground(gf(t), t, offset_y=100))
 
 blur_duration = get_transition_span( idx = 7)
 blurred_clip = processed_clip.fl(apply_decreasing_blur)
@@ -1150,7 +1218,7 @@ clip_start, clip_end = get_video_timespan( idx=9)
 clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4"))
 clip_end = clip.duration
 
-avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).subclip( clip_start, clip_end)
+avatar_clip = VideoFileClip(os.path.join(folder_path, "bg_avatar.mp4")).without_audio().subclip( clip_start, clip_end)
 avatar_clip.write_videofile(f"{temp_folder}/09.mp4", temp_audiofile=f"{temp_folder}/09.mp3", remove_temp=True, codec="libx264", fps=video_fps)
 avatar_clip.close()
 
@@ -1166,7 +1234,7 @@ def blur_frame(frame):
 
 blur_amount = 3
 
-clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).subclip(10, 10+clip_length)
+clip = VideoFileClip(os.path.join(folder_path, "ss.mp4")).without_audio().subclip(10, 10+clip_length)
 aspect_ratio = clip.w / clip.h
 dest_ratio = video_dest_width / video_dest_height
 
@@ -1180,7 +1248,7 @@ else:
 cropped_clip = clip.crop( 0,  102,  new_width, 102+new_height).resize( (video_dest_width, video_dest_height))
 background_clip = cropped_clip.fl_image(blur_frame)
 
-foreground_clip = VideoFileClip(os.path.join(folder_path, "action.mp4")).subclip( 0, clip_length - action_delay)
+foreground_clip = VideoFileClip(os.path.join(folder_path, "action.mp4")).without_audio().subclip( 0, clip_length - action_delay)
 
 foreground_width = background_clip.size[0]
 foreground_height = int( foreground_clip.size[1] * foreground_width / foreground_clip.size[0])
