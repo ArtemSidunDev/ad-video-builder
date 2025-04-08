@@ -323,7 +323,7 @@ click_audio = AudioFileClip("./templates/template5/input/mouse-click.mp3")
 transition_audio = AudioFileClip("./templates/template5/input/swoosh.mp3")
 
 audios = [foreground_audio]
-audios.append( AudioFileClip( os.path.join(folder_path, "background_audio.mp3")).subclip(0, foreground_audio.duration).fx(afx.volumex, 0.16))
+audios.append( AudioFileClip( os.path.join(folder_path, "background_audio.mp3")).subclip(0, foreground_audio.duration).fx(afx.volumex, 0.1))
 
 audios.append(transition_audio.set_start(3.88))
 audios.append(transition_audio.set_start(8.8))
