@@ -166,11 +166,10 @@ def generate_outline_text(
     clips = []
 
     dx_dy = [
-        (-3, 0), (3, 0), (0, -3), (0, 3),
-        (-2, -2), (-2, 2), (2, -2), (2, 2),
-        (-3, -2), (-3, 2), (3, -2), (3, 2),
-        (-2, -3), (-2, 3), (2, -3), (2, 3),
-        (-3, -3), (-3, 3), (3, -3), (3, 3)
+        (-2, 0), (2, 0),
+        (0, -2), (0, 2),
+        (-1, -1), (-1, 1),
+        (1, -1), (1, 1)
     ]
 
     for dx, dy in dx_dy:
@@ -344,8 +343,8 @@ final_video = final_video.set_audio(composite_audio)
 final_video.write_videofile(os.path.join(folder_path, "output.mp4"), codec="libx264", fps=VIDEO_FPS, audio_codec="aac")
 final_video.close()
 
-# try:
-#     shutil.rmtree(TEMP_FOLDER)
-#     print(f"Folder '{TEMP_FOLDER}' deleted successfully.")
-# except OSError as e:
-#     print(f"Error: {e}")
+try:
+    shutil.rmtree(TEMP_FOLDER)
+    print(f"Folder '{TEMP_FOLDER}' deleted successfully.")
+except OSError as e:
+    print(f"Error: {e}")

@@ -8,11 +8,11 @@ const { run: runSiteScroll } = require('./site_scroll.js');
 const { run: generateSubtitlesSRT } = require('./subtitles_srt.js');
 const { run: generateSubtitlesASS } = require('./subtitles_ass.js');
 
-const { 
-  AWS_KEY_ID, 
-  AWS_SECRET_KEY, 
-  AWS_S3_AD_VIDEOS_BUCKET, 
-  AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL 
+const {
+  AWS_KEY_ID,
+  AWS_SECRET_KEY,
+  AWS_S3_AD_VIDEOS_BUCKET,
+  AWS_S3_AD_VIDEOS_CLOUD_FRONT_URL
 } = process.env;
 
 AWS.config.update({
@@ -30,35 +30,36 @@ async function handle(templateName, data) {
     errorCallBackUrl,
     productUrl,
     subtitleSettings = {},
-    statusUpdateCallBackUrl
+    statusUpdateCallBackUrl,
+    videoHookUrl
   } = data;
+
   console.log('Processing videos', adVideoId, userId)
   console.time('BUILD_TIME');
-  //TODO: Add error handling
-  const folderPath = `./data/${uuidv4()}`;
-  if (fs.existsSync(folderPath)) {
-    fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-  }
-
-  if(statusUpdateCallBackUrl) {
-    await axios.patch(statusUpdateCallBackUrl, {
-      status: 'BUILDING'
-    })
-  }
-
-  fs.mkdirSync(folderPath, { recursive: true });
-  
-  const subtitleSettingsPath = `${folderPath}/subtitleSettings.json`
-  
-  fs.writeFileSync(subtitleSettingsPath, JSON.stringify(subtitleSettings, null, 2))
-
   try {
-    
+    //TODO: Add error handling
+    const folderPath = `./data/${uuidv4()}`;
+    if (fs.existsSync(folderPath)) {
+      fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+    }
+
+    fs.mkdirSync(folderPath, { recursive: true });
+
+    const subtitleSettingsPath = `${folderPath}/subtitleSettings.json`
+
+    fs.writeFileSync(subtitleSettingsPath, JSON.stringify(subtitleSettings, null, 2))
+
+    if (statusUpdateCallBackUrl) {
+      await axios.patch(statusUpdateCallBackUrl, {
+        status: 'BUILDING'
+      })
+    }
+
     await prepareMedia(folderPath, data);
 
     await Promise.all([
@@ -67,23 +68,30 @@ async function handle(templateName, data) {
     ]);
 
     await runCommand(`./templates/${templateName}/run.sh ${folderPath} ${subtitleSettingsPath}`);
-    
+
     const fileName = uuidv4();
-    
+
+    if (videoHookUrl) {
+      await runCommand(`ffmpeg -i ${folderPath}/videoHook.mp4 -vf "scale=1216:2160" ${folderPath}/videoHook_scale_command.mp4`);
+      await runCommand(`ffmpeg -i ${folderPath}/videoHook_scale_command.mp4 -i ${folderPath}/output.mp4 -filter_complex "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[outv][outa]" -map "[outv]" -map "[outa]" ${folderPath}/output_concat.mp4`);
+      fs.unlinkSync(`${folderPath}/output.mp4`);
+      fs.renameSync(`${folderPath}/output_concat.mp4`, `${folderPath}/output.mp4`);
+    }
+
     await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=1152:2048" ${folderPath}/output_scale_command.mp4`);
     await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=720:1280" ${folderPath}/output_low_scale_command.mp4`);
-    
+
     fs.unlinkSync(`${folderPath}/output.mp4`);
     fs.renameSync(`${folderPath}/output_scale_command.mp4`, `${folderPath}/output.mp4`);
-    
+
     const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
-    
+
     console.timeEnd('BUILD_TIME');
 
     const videoFilePath = `${userId}/${adVideoId}/${fileName}.mp4`
     const videoLowFilePath = `${userId}/${adVideoId}/${fileName}_low.mp4`
     const coverVideoFilePath = `${userId}/${adVideoId}/${fileName}_cover.png`
-    
+
     await uploadToS3(`${folderPath}/output.mp4`, videoFilePath);
     await uploadToS3(`${folderPath}/output_low_scale_command.mp4`, videoLowFilePath);
     await uploadToS3(coverPath, coverVideoFilePath, 'image/png');
@@ -170,16 +178,16 @@ async function prepareMedia(folderPath, data) {
       }
     }
   }
-  
+
   await Promise.all(
     videos.map(async (mediaItem, index) => {
-      const mediaPath = `${folderPath}/${index+1}.mp4`;
+      const mediaPath = `${folderPath}/${index + 1}.mp4`;
       await download(mediaItem.url, mediaPath);
     })
   );
-  
+
   console.log('Media prepared');
-  
+
   return true;
 }
 
@@ -191,14 +199,16 @@ async function prepare(folderPath, data) {
     musicUrl,
     avatarSettings,
     subtitleUrl,
-    textHookImageUrl
+    textHookImageUrl,
+    videoHookUrl,
   } = data;
   const avatarSubtitlesUrl = subtitleUrl ? subtitleUrl : avatarUrl.replace('.mp4', '.srt');
 
   const subtitlesFormat = avatarSubtitlesUrl.includes('.srt') ? `srt` : `ass`
 
-  if(textHookImageUrl) download(textHookImageUrl, `${folderPath}/textHookImage.png`);
-  
+  if (textHookImageUrl) download(textHookImageUrl, `${folderPath}/textHookImage.png`);
+  if (videoHookUrl) download(videoHookUrl, `${folderPath}/videoHook.mp4`);
+
   await Promise.all([
     download(avatarUrl, `${folderPath}/avatar.mp4`),
     download(actionUrl, `${folderPath}/action.mp4`),
@@ -207,11 +217,11 @@ async function prepare(folderPath, data) {
     download(avatarSubtitlesUrl, `${folderPath}/subtitles.${subtitlesFormat}`),
   ]);
 
-  let acceleration= 1
+  let acceleration = 1
 
-  if(avatarSettings && avatarSettings.accelerationEnabled) {
-    acceleration= await getAcceleration(`${folderPath}/avatar.mp4`, 27);
-    await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4  -vf "setpts=${1/acceleration}*PTS" -filter:a "atempo=${acceleration}" -q:v 3 -q:a 3 ${folderPath}/avatar_speed.mp4`);
+  if (avatarSettings && avatarSettings.accelerationEnabled) {
+    acceleration = await getAcceleration(`${folderPath}/avatar.mp4`, 27);
+    await runCommand(`ffmpeg -i ${folderPath}/avatar.mp4  -vf "setpts=${1 / acceleration}*PTS" -filter:a "atempo=${acceleration}" -q:v 3 -q:a 3 ${folderPath}/avatar_speed.mp4`);
     await runCommand(`ffmpeg -i ${folderPath}/avatar_speed.mp4 -filter:a "volume=2.0" ${folderPath}/avatar_end.mp4`);
     fs.unlinkSync(`${folderPath}/avatar_speed.mp4`);
   } else {
@@ -222,7 +232,7 @@ async function prepare(folderPath, data) {
 
   await runCommand(`ffmpeg -i ${folderPath}/avatar_end.mp4 -vf "scale=1216:2160" ${folderPath}/avatar.mp4`);
 
-  if(subtitlesFormat === 'srt') {
+  if (subtitlesFormat === 'srt') {
     await generateSubtitlesSRT({
       folderPath,
       acceleration
@@ -244,12 +254,12 @@ async function generateSubtitles(folderPath) {
   const data = fs.readFileSync(`${folderPath}/words/avatar.mp4.words.json`, 'utf8');
   const parsedData = JSON.parse(data);
   const words = [];
-  for(const segment of parsedData.segments) {
-    for(const word of segment.words) {
+  for (const segment of parsedData.segments) {
+    for (const word of segment.words) {
       words.push({
         start: word.start,
-        end:   word.end,
-        word:  word.text
+        end: word.end,
+        word: word.text
       });
     }
   }
@@ -269,12 +279,12 @@ async function generateSubtitlesVoice(folderPath) {
   const data = fs.readFileSync(`${folderPath}/words/voice.mp3.words.json`, 'utf8');
   const parsedData = JSON.parse(data);
   const words = [];
-  for(const segment of parsedData.segments) {
-    for(const word of segment.words) {
+  for (const segment of parsedData.segments) {
+    for (const word of segment.words) {
       words.push({
         start: word.start,
-        end:   word.end,
-        word:  word.text
+        end: word.end,
+        word: word.text
       });
     }
   }
@@ -295,7 +305,7 @@ async function prepareVoice(folderPath, data) {
     actionUrl,
     musicUrl,
   } = data;
-  
+
   await Promise.all([
     download(voiceUrl, `${folderPath}/voice.mp3`),
     download(actionUrl, `${folderPath}/action.mp4`),
@@ -328,7 +338,7 @@ async function handleVoice(templateName, data) {
   }
   fs.mkdirSync(folderPath, { recursive: true });
   try {
-    
+
     await prepareMedia(folderPath, data);
 
     await Promise.all([
@@ -337,23 +347,23 @@ async function handleVoice(templateName, data) {
     ]);
 
     await runCommand(`./templates/${templateName}/run.sh ${folderPath} ${subtitleTemplate}`);
-    
+
     const fileName = uuidv4();
-    
+
     await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=1152:2048" ${folderPath}/output_scale_command.mp4`);
     await runCommand(`ffmpeg -i ${folderPath}/output.mp4 -vf "scale=720:1280" ${folderPath}/output_low_scale_command.mp4`);
-    
+
     fs.unlinkSync(`${folderPath}/output.mp4`);
     fs.renameSync(`${folderPath}/output_scale_command.mp4`, `${folderPath}/output.mp4`);
-    
+
     const coverPath = await createCover(`${folderPath}/output.mp4`, folderPath);
-    
+
     console.timeEnd('BUILD_TIME');
 
     const videoFilePath = `${userId}/${adVideoId}/${fileName}.mp4`
     const videoLowFilePath = `${userId}/${adVideoId}/${fileName}_low.mp4`
     const coverVideoFilePath = `${userId}/${adVideoId}/${fileName}_cover.png`
-    
+
     await uploadToS3(`${folderPath}/output.mp4`, videoFilePath);
     await uploadToS3(`${folderPath}/output_low_scale_command.mp4`, videoLowFilePath);
     await uploadToS3(coverPath, coverVideoFilePath, 'image/png');
@@ -407,7 +417,7 @@ function uploadToS3(mediaPath, s3Key, contentType = 'video/mp4') {
     ContentType: contentType,
   };
   return new Promise((resolve, reject) => {
-    s3.upload(params, function(err, data) {
+    s3.upload(params, function (err, data) {
       if (err) {
         reject(err);
       }
@@ -464,23 +474,23 @@ async function getVideoDuration(filePath) {
 async function getAcceleration(inputPath, minDuration) {
   const standardAcceleration = 1.3;
   try {
-      const duration = await getVideoDuration(inputPath);
-      console.log(`Video duration: ${duration}`);
-      let acceleration = standardAcceleration;
+    const duration = await getVideoDuration(inputPath);
+    console.log(`Video duration: ${duration}`);
+    let acceleration = standardAcceleration;
 
-      let resultingDuration = duration / acceleration;
+    let resultingDuration = duration / acceleration;
 
-      if (resultingDuration < minDuration) {
-          acceleration = duration / minDuration;
-          if(acceleration < 1) {
-            acceleration = 1;
-          }
+    if (resultingDuration < minDuration) {
+      acceleration = duration / minDuration;
+      if (acceleration < 1) {
+        acceleration = 1;
       }
-      console.log(`Video accelerated with factor ${acceleration}.`);
-      
-      return acceleration;
+    }
+    console.log(`Video accelerated with factor ${acceleration}.`);
+
+    return acceleration;
   } catch (error) {
-      console.error('Error accelerating video:', error);
+    console.error('Error accelerating video:', error);
   }
 }
 

@@ -179,11 +179,10 @@ def generate_outline_text(
     clips = []
 
     dx_dy = [
-        (-3, 0), (3, 0), (0, -3), (0, 3),
-        (-2, -2), (-2, 2), (2, -2), (2, 2),
-        (-3, -2), (-3, 2), (3, -2), (3, 2),
-        (-2, -3), (-2, 3), (2, -3), (2, 3),
-        (-3, -3), (-3, 3), (3, -3), (3, 3)
+        (-2, 0), (2, 0),
+        (0, -2), (0, 2),
+        (-1, -1), (-1, 1),
+        (1, -1), (1, 1)
     ]
 
     for dx, dy in dx_dy:
@@ -222,11 +221,10 @@ def generate_highlight_text(
 ):
     clips = []
     dx_dy = [
-        (-3, 0), (3, 0), (0, -3), (0, 3),
-        (-2, -2), (-2, 2), (2, -2), (2, 2),
-        (-3, -2), (-3, 2), (3, -2), (3, 2),
-        (-2, -3), (-2, 3), (2, -3), (2, 3),
-        (-3, -3), (-3, 3), (3, -3), (3, 3)
+        (-2, 0), (2, 0),
+        (0, -2), (0, 2),
+        (-1, -1), (-1, 1),
+        (1, -1), (1, 1)
     ]
 
     temp_clip = TextClip(word, font=font, fontsize=fontsize, color=color, method=method)
@@ -418,8 +416,8 @@ final_video.subclip(0, input_video_duration).write_videofile(
     audio_codec="aac",
     fps=30)
 
-# try:
-#     shutil.rmtree(temp_folder)
-#     # print(f"Folder '{temp_folder}' deleted successfully.")
-# except OSError as e:
-#     print(f"Error: {e}")
+try:
+    shutil.rmtree(temp_folder)
+    print(f"Folder '{temp_folder}' deleted successfully.")
+except OSError as e:
+    print(f"Error: {e}")

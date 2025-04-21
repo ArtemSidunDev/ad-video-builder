@@ -1331,5 +1331,5 @@ except subprocess.CalledProcessError as e:
 for file_name in os.listdir(temp_folder):
     file_path = os.path.join(temp_folder, file_name)
 
-    # if file_name != "background_video.mp4":
-    #     os.remove(file_path)
+    if file_name != "background_video.mp4":
+        os.remove(file_path)
