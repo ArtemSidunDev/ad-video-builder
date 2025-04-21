@@ -36,9 +36,8 @@ async function handle(templateName, data) {
 
   console.log('Processing videos', adVideoId, userId)
   console.time('BUILD_TIME');
+  const folderPath = `./data/${uuidv4()}`;
   try {
-    //TODO: Add error handling
-    const folderPath = `./data/${uuidv4()}`;
     if (fs.existsSync(folderPath)) {
       fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
         if (err) {
