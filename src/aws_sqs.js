@@ -4,7 +4,13 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 
-const { AWS_KEY_ID, AWS_SECRET_KEY, AWS_SQS_URL } = process.env;
+const { 
+  AWS_KEY_ID, 
+  AWS_SECRET_KEY, 
+  AWS_SQS_URL,
+  TELEGRAM_BOT_TOKEN,
+  TELEGRAM_CHAT_ID,
+} = process.env;
 const maxProcesses = 2;
 
 AWS.config.update({
@@ -127,7 +133,7 @@ async function sendTgMessage(data, templateName, createdAt) {
   %0A - Template name: <code>${templateName || 'N/A'}</code>
   %0A - Created At: <code>${createdAtFormat || 'N/A'}</code>
   %0A - Error: <code>Video folder deleted by time</code>`;
-  return await axios.post(`https://api.telegram.org/bot6830620279:AAHfJHgu_FnD7DWhNRtQYzLltINF5q6ixxs/sendMessage?chat_id=-4132739805&parse_mode=HTML&text=${message}`);
+  return await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&parse_mode=HTML&text=${message}`);
 }
 
 async function checkFoldersAndDelete(directoryPath) {
@@ -150,10 +156,11 @@ async function checkFoldersAndDelete(directoryPath) {
           const currentTime = Date.now();
           const timeDiff = currentTime - folder.createdAt;
           const timeLimit = 1000 * 60 * 30 // 30 minutes
+
           console.log('Folder:', folderPath, 'Created at:', new Date(folder.createdAt), 'Current time:', new Date(currentTime), 'Time diff in minutes:', Math.floor(timeDiff / (1000 * 60)));
 
           if (timeDiff > timeLimit) {
-            fs.rmdir(folder.folderPath, { recursive: true }, (err) => {
+            fs.rm(folder.folderPath, { recursive: true }, (err) => {
               if (err) {
                 console.error('Error deleting folder:', err);
               } else {
