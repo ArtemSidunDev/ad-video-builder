@@ -22,7 +22,7 @@ AWS.config.update({
 
 const s3 = new AWS.S3();
 
-async function handle(templateName, data) {
+async function handle(templateName, data, folderPathOption) {
   const {
     adVideoId,
     userId,
@@ -36,7 +36,7 @@ async function handle(templateName, data) {
 
   console.log('Processing videos', adVideoId, userId)
   console.time('BUILD_TIME');
-  const folderPath = `./data/${uuidv4()}`;
+  const folderPath = folderPathOption || `./data/${uuidv4()}`;
   try {
     if (fs.existsSync(folderPath)) {
       fs.rmSync(`${folderPath}`, { recursive: true }, (err) => {
