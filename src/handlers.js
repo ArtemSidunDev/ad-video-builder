@@ -200,6 +200,7 @@ async function prepare(folderPath, data) {
     subtitleUrl,
     textHookImageUrl,
     videoHookUrl,
+    voice
   } = data;
   const avatarSubtitlesUrl = subtitleUrl ? subtitleUrl : avatarUrl.replace('.mp4', '.srt');
 
@@ -230,17 +231,22 @@ async function prepare(folderPath, data) {
   fs.renameSync(`${folderPath}/avatar.mp4`, `${folderPath}/avatar_org.mp4`);
 
   await runCommand(`ffmpeg -i ${folderPath}/avatar_end.mp4 -vf "scale=1216:2160" ${folderPath}/avatar.mp4`);
-
-  if (subtitlesFormat === 'srt') {
-    await generateSubtitlesSRT({
-      folderPath,
-      acceleration
-    })
+  if(voice && voice.subtitlesUrl) {
+    const jsonResponse = await axios.get(voice.subtitlesUrl);
+    const wordsWithTiming = jsonResponse.data.wordsWithTiming;
+    fs.writeFileSync(`${folderPath}/transcription.json`, JSON.stringify(wordsWithTiming), { encoding: 'utf8' });
   } else {
-    await generateSubtitlesASS({
-      folderPath,
-      acceleration
-    })
+    if (subtitlesFormat === 'srt') {
+      await generateSubtitlesSRT({
+        folderPath,
+        acceleration
+      })
+    } else {
+      await generateSubtitlesASS({
+        folderPath,
+        acceleration
+      })
+    }
   }
 
   await Promise.all([
